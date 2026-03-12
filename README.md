@@ -110,3 +110,5 @@ Este proyecto sigue la metodología de desarrollo basada en especificaciones. Ve
 ## 📄 Licencia
 
 Propietario - Todos los derechos reservados
+
+Merry
