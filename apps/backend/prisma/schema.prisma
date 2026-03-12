@@ -1,0 +1,400 @@
+// Prisma Schema for FitMaster
+// Multi-tenant SaaS for gym management with AI
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ============================================
+// CORE ENTITIES
+// ============================================
+
+model Gym {
+  id        String   @id @default(uuid())
+  name      String
+  subdomain String   @unique
+  country   String   @default("CR")
+  timezone  String   @default("America/Costa_Rica")
+  settings  Json?
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  // Relations
+  users              User[]
+  clients            Client[]
+  memberships        Membership[]
+  routines           Routine[]
+  equipment          Equipment[]
+  promotions         Promotion[]
+  payments           Payment[]
+  physicalProgress   PhysicalProgress[]
+  progressPhotos     ProgressPhoto[]
+  maintenanceRecords MaintenanceRecord[]
+
+  @@map("gyms")
+}
+
+model User {
+  id           String   @id @default(uuid())
+  gymId        String   @map("gym_id")
+  email        String
+  passwordHash String   @map("password_hash")
+  role         UserRole
+  firstName    String   @map("first_name")
+  lastName     String   @map("last_name")
+  createdAt    DateTime @default(now()) @map("created_at")
+  updatedAt    DateTime @updatedAt @map("updated_at")
+
+  // Relations
+  gym              Gym       @relation(fields: [gymId], references: [id], onDelete: Cascade)
+  createdRoutines  Routine[]
+
+  @@unique([gymId, email])
+  @@index([gymId, email])
+  @@map("users")
+}
+
+enum UserRole {
+  SUPER_ADMIN
+  GYM_ADMIN
+  TRAINER
+  RECEPTIONIST
+  CLIENT
+}
+
+// ============================================
+// CLIENT MANAGEMENT
+// ============================================
+
+model Client {
+  id                 String       @id @default(uuid())
+  gymId              String       @map("gym_id")
+  firstName          String       @map("first_name")
+  lastName           String       @map("last_name")
+  email              String
+  phone              String?
+  dateOfBirth        DateTime     @map("date_of_birth")
+  gender             Gender
+  weight             Float
+  height             Float
+  bmi                Float
+  bodyFatPercentage  Float?       @map("body_fat_percentage")
+  measurements       Json?
+  goalType           GoalType     @map("goal_type")
+  targetWeight       Float?       @map("target_weight")
+  targetDate         DateTime?    @map("target_date")
+  status             ClientStatus @default(ACTIVE)
+  createdAt          DateTime     @default(now()) @map("created_at")
+  updatedAt          DateTime     @updatedAt @map("updated_at")
+
+  // Relations
+  gym                Gym                  @relation(fields: [gymId], references: [id], onDelete: Cascade)
+  memberships        Membership[]
+  physicalProgress   PhysicalProgress[]
+  progressPhotos     ProgressPhoto[]
+  routineAssignments RoutineAssignment[]
+
+  @@unique([gymId, email])
+  @@index([gymId, status])
+  @@map("clients")
+}
+
+enum Gender {
+  MALE
+  FEMALE
+  OTHER
+}
+
+enum GoalType {
+  WEIGHT_LOSS
+  MUSCLE_GAIN
+  MAINTENANCE
+  STRENGTH
+  ENDURANCE
+}
+
+enum ClientStatus {
+  ACTIVE
+  SUSPENDED
+  INACTIVE
+}
+
+model PhysicalProgress {
+  id                String    @id @default(uuid())
+  gymId             String    @map("gym_id")
+  clientId          String    @map("client_id")
+  date              DateTime  @default(now())
+  weight            Float
+  bodyFatPercentage Float?    @map("body_fat_percentage")
+  measurements      Json?
+  notes             String?
+  createdAt         DateTime  @default(now()) @map("created_at")
+
+  // Relations
+  gym    Gym    @relation(fields: [gymId], references: [id], onDelete: Cascade)
+  client Client @relation(fields: [clientId], references: [id], onDelete: Cascade)
+
+  @@index([gymId, clientId, date])
+  @@map("physical_progress")
+}
+
+model ProgressPhoto {
+  id        String    @id @default(uuid())
+  gymId     String    @map("gym_id")
+  clientId  String    @map("client_id")
+  photoUrl  String    @map("photo_url")
+  date      DateTime  @default(now())
+  photoType PhotoType @map("photo_type")
+  createdAt DateTime  @default(now()) @map("created_at")
+
+  // Relations
+  gym    Gym    @relation(fields: [gymId], references: [id], onDelete: Cascade)
+  client Client @relation(fields: [clientId], references: [id], onDelete: Cascade)
+
+  @@index([gymId, clientId])
+  @@map("progress_photos")
+}
+
+enum PhotoType {
+  FRONT
+  SIDE
+  BACK
+}
+
+// ============================================
+// MEMBERSHIPS & PAYMENTS
+// ============================================
+
+model Membership {
+  id         String           @id @default(uuid())
+  gymId      String           @map("gym_id")
+  clientId   String           @map("client_id")
+  type       MembershipType
+  startDate  DateTime         @map("start_date")
+  endDate    DateTime         @map("end_date")
+  status     MembershipStatus @default(ACTIVE)
+  price      Decimal          @db.Decimal(10, 2)
+  autoRenew  Boolean          @default(false) @map("auto_renew")
+  createdAt  DateTime         @default(now()) @map("created_at")
+  updatedAt  DateTime         @updatedAt @map("updated_at")
+
+  // Relations
+  gym      Gym       @relation(fields: [gymId], references: [id], onDelete: Cascade)
+  client   Client    @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  payments Payment[]
+
+  @@index([gymId, status, endDate])
+  @@index([gymId, clientId])
+  @@map("memberships")
+}
+
+enum MembershipType {
+  MONTHLY
+  QUARTERLY
+  ANNUAL
+}
+
+enum MembershipStatus {
+  ACTIVE
+  EXPIRING_SOON
+  EXPIRED
+  CANCELLED
+}
+
+model Payment {
+  id                    String        @id @default(uuid())
+  gymId                 String        @map("gym_id")
+  clientId              String        @map("client_id")
+  membershipId          String        @map("membership_id")
+  amount                Decimal       @db.Decimal(10, 2)
+  currency              String        @default("CRC")
+  method                PaymentMethod
+  status                PaymentStatus @default(PENDING)
+  stripePaymentIntentId String?       @map("stripe_payment_intent_id")
+  sinpeReference        String?       @map("sinpe_reference")
+  metadata              Json?
+  createdAt             DateTime      @default(now()) @map("created_at")
+
+  // Relations
+  gym        Gym        @relation(fields: [gymId], references: [id], onDelete: Cascade)
+  membership Membership @relation(fields: [membershipId], references: [id], onDelete: Cascade)
+
+  @@index([gymId, clientId, createdAt])
+  @@map("payments")
+}
+
+enum PaymentMethod {
+  CREDIT_CARD
+  DEBIT_CARD
+  SINPE_MOVIL
+  CASH
+}
+
+enum PaymentStatus {
+  PENDING
+  COMPLETED
+  FAILED
+  REFUNDED
+}
+
+// ============================================
+// ROUTINES
+// ============================================
+
+model Routine {
+  id             String          @id @default(uuid())
+  gymId          String          @map("gym_id")
+  name           String
+  description    String?
+  targetGoal     GoalType        @map("target_goal")
+  difficulty     DifficultyLevel
+  durationWeeks  Int             @map("duration_weeks")
+  weeklySchedule Json            @map("weekly_schedule")
+  createdBy      String          @map("created_by")
+  isAIGenerated  Boolean         @default(false) @map("is_ai_generated")
+  createdAt      DateTime        @default(now()) @map("created_at")
+  updatedAt      DateTime        @updatedAt @map("updated_at")
+
+  // Relations
+  gym         Gym                 @relation(fields: [gymId], references: [id], onDelete: Cascade)
+  creator     User                @relation(fields: [createdBy], references: [id])
+  assignments RoutineAssignment[]
+
+  @@index([gymId])
+  @@map("routines")
+}
+
+enum DifficultyLevel {
+  BEGINNER
+  INTERMEDIATE
+  ADVANCED
+}
+
+model RoutineAssignment {
+  id         String   @id @default(uuid())
+  gymId      String   @map("gym_id")
+  routineId  String   @map("routine_id")
+  clientId   String   @map("client_id")
+  assignedAt DateTime @default(now()) @map("assigned_at")
+  startDate  DateTime @map("start_date")
+  isActive   Boolean  @default(true) @map("is_active")
+
+  // Relations
+  routine Routine @relation(fields: [routineId], references: [id], onDelete: Cascade)
+  client  Client  @relation(fields: [clientId], references: [id], onDelete: Cascade)
+
+  @@index([gymId, clientId, isActive])
+  @@map("routine_assignments")
+}
+
+// ============================================
+// EQUIPMENT & INVENTORY
+// ============================================
+
+model Equipment {
+  id                      String              @id @default(uuid())
+  gymId                   String              @map("gym_id")
+  name                    String
+  brand                   String?
+  category                EquipmentCategory
+  purchaseDate            DateTime?           @map("purchase_date")
+  status                  EquipmentStatus     @default(OPERATIONAL)
+  maintenanceFrequencyDays Int                @map("maintenance_frequency_days")
+  lastMaintenance         DateTime?           @map("last_maintenance")
+  nextMaintenance         DateTime?           @map("next_maintenance")
+  notes                   String?
+  createdAt               DateTime            @default(now()) @map("created_at")
+  updatedAt               DateTime            @updatedAt @map("updated_at")
+
+  // Relations
+  gym                 Gym                 @relation(fields: [gymId], references: [id], onDelete: Cascade)
+  maintenanceRecords  MaintenanceRecord[]
+
+  @@index([gymId, status])
+  @@map("equipment")
+}
+
+enum EquipmentCategory {
+  CARDIO
+  STRENGTH
+  FREE_WEIGHTS
+  FUNCTIONAL
+  ACCESSORIES
+}
+
+enum EquipmentStatus {
+  OPERATIONAL
+  MAINTENANCE
+  DAMAGED
+  OUT_OF_SERVICE
+}
+
+model MaintenanceRecord {
+  id          String          @id @default(uuid())
+  gymId       String          @map("gym_id")
+  equipmentId String          @map("equipment_id")
+  date        DateTime        @default(now())
+  type        MaintenanceType
+  description String
+  cost        Decimal?        @db.Decimal(10, 2)
+  performedBy String          @map("performed_by")
+  createdAt   DateTime        @default(now()) @map("created_at")
+
+  // Relations
+  gym       Gym       @relation(fields: [gymId], references: [id], onDelete: Cascade)
+  equipment Equipment @relation(fields: [equipmentId], references: [id], onDelete: Cascade)
+
+  @@index([gymId, equipmentId])
+  @@map("maintenance_records")
+}
+
+enum MaintenanceType {
+  ROUTINE
+  REPAIR
+  REPLACEMENT
+}
+
+// ============================================
+// PROMOTIONS
+// ============================================
+
+model Promotion {
+  id                        String         @id @default(uuid())
+  gymId                     String         @map("gym_id")
+  name                      String
+  code                      String
+  type                      PromotionType
+  discountType              DiscountType   @map("discount_type")
+  discountValue             Decimal        @map("discount_value") @db.Decimal(10, 2)
+  startDate                 DateTime       @map("start_date")
+  endDate                   DateTime       @map("end_date")
+  maxUses                   Int?           @map("max_uses")
+  currentUses               Int            @default(0) @map("current_uses")
+  applicableMembershipTypes Json           @map("applicable_membership_types")
+  isActive                  Boolean        @default(true) @map("is_active")
+  createdAt                 DateTime       @default(now()) @map("created_at")
+
+  // Relations
+  gym Gym @relation(fields: [gymId], references: [id], onDelete: Cascade)
+
+  @@unique([gymId, code])
+  @@index([gymId, isActive])
+  @@map("promotions")
+}
+
+enum PromotionType {
+  SIGNUP
+  RENEWAL
+  REFERRAL
+  SEASONAL
+}
+
+enum DiscountType {
+  PERCENTAGE
+  FIXED_AMOUNT
+}

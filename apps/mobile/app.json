@@ -1,0 +1,22 @@
+{
+  "expo": {
+    "name": "FitMaster",
+    "slug": "fitmaster",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "userInterfaceStyle": "light",
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "com.fitmaster.app"
+    },
+    "android": {
+      "package": "com.fitmaster.app",
+      "adaptiveIcon": {
+        "backgroundColor": "#0ea5e9"
+      }
+    },
+    "web": {
+      "bundler": "metro"
+    }
+  }
+}
