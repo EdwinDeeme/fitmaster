@@ -9,14 +9,26 @@ module.exports = {
     extend: {
       colors: {
         primary: {
-          50: '#f0f9ff',
-          100: '#e0f2fe',
-          500: '#0ea5e9',
-          600: '#0284c7',
-          700: '#0369a1',
+          DEFAULT: '#C1EF00',
+          hover: '#A8D600',
+          active: '#8FB800',
         },
+        dark: {
+          DEFAULT: '#212121',
+          light: '#6B7280',
+        },
+        bone: {
+          DEFAULT: '#F1F2F6',
+        },
+        border: {
+          DEFAULT: '#E5E7EB',
+        },
+      },
+      fontFamily: {
+        sans: ['Inter', 'sans-serif'],
       },
     },
   },
   plugins: [],
-}
+};
+

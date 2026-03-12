@@ -5,12 +5,25 @@ import {
   ForbiddenException,
   BadRequestException,
 } from '@nestjs/common';
+import { Reflector } from '@nestjs/core';
 import { TokenPayload } from '../interfaces';
 import { UserRole } from '@prisma/client';
 
 @Injectable()
 export class GymIsolationGuard implements CanActivate {
+  constructor(private reflector: Reflector) {}
+
   canActivate(context: ExecutionContext): boolean {
+    // Check if route is marked as public
+    const isPublic = this.reflector.getAllAndOverride<boolean>('isPublic', [
+      context.getHandler(),
+      context.getClass(),
+    ]);
+
+    if (isPublic) {
+      return true;
+    }
+
     const request = context.switchToHttp().getRequest();
     const user: TokenPayload = request.user;
 

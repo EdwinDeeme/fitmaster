@@ -1,13 +1,16 @@
 import { ExecutionContext, ForbiddenException } from '@nestjs/common';
+import { Reflector } from '@nestjs/core';
 import { GymIsolationGuard } from './gym-isolation.guard';
 import { UserRole } from '@prisma/client';
 import { TokenPayload } from '../interfaces';
 
 describe('GymIsolationGuard', () => {
   let guard: GymIsolationGuard;
+  let reflector: Reflector;
 
   beforeEach(() => {
-    guard = new GymIsolationGuard();
+    reflector = new Reflector();
+    guard = new GymIsolationGuard(reflector);
   });
 
   const createMockExecutionContext = (
@@ -23,6 +26,8 @@ describe('GymIsolationGuard', () => {
           body: {},
         }),
       }),
+      getHandler: jest.fn(),
+      getClass: jest.fn(),
     } as any;
   };
 
@@ -32,6 +37,7 @@ describe('GymIsolationGuard', () => {
 
   it('should throw ForbiddenException if user is not authenticated', () => {
     const context = createMockExecutionContext(null);
+    jest.spyOn(reflector, 'getAllAndOverride').mockReturnValue(false);
 
     expect(() => guard.canActivate(context)).toThrow(ForbiddenException);
   });
@@ -45,6 +51,7 @@ describe('GymIsolationGuard', () => {
     };
 
     const context = createMockExecutionContext(user, 'gym-456');
+    jest.spyOn(reflector, 'getAllAndOverride').mockReturnValue(false);
 
     expect(guard.canActivate(context)).toBe(true);
   });
@@ -58,6 +65,7 @@ describe('GymIsolationGuard', () => {
     };
 
     const context = createMockExecutionContext(user, 'gym-123');
+    jest.spyOn(reflector, 'getAllAndOverride').mockReturnValue(false);
 
     expect(guard.canActivate(context)).toBe(true);
   });
@@ -71,6 +79,7 @@ describe('GymIsolationGuard', () => {
     };
 
     const context = createMockExecutionContext(user, 'gym-456');
+    jest.spyOn(reflector, 'getAllAndOverride').mockReturnValue(false);
 
     expect(() => guard.canActivate(context)).toThrow(ForbiddenException);
   });
@@ -84,6 +93,7 @@ describe('GymIsolationGuard', () => {
     };
 
     const context = createMockExecutionContext(user);
+    jest.spyOn(reflector, 'getAllAndOverride').mockReturnValue(false);
 
     expect(guard.canActivate(context)).toBe(true);
   });
@@ -105,7 +115,11 @@ describe('GymIsolationGuard', () => {
           body: {},
         }),
       }),
+      getHandler: jest.fn(),
+      getClass: jest.fn(),
     } as any;
+
+    jest.spyOn(reflector, 'getAllAndOverride').mockReturnValue(false);
 
     expect(() => guard.canActivate(context)).toThrow(ForbiddenException);
   });
@@ -127,8 +141,19 @@ describe('GymIsolationGuard', () => {
           body: { gymId: 'gym-456' },
         }),
       }),
+      getHandler: jest.fn(),
+      getClass: jest.fn(),
     } as any;
 
+    jest.spyOn(reflector, 'getAllAndOverride').mockReturnValue(false);
+
     expect(() => guard.canActivate(context)).toThrow(ForbiddenException);
+  });
+
+  it('should allow access to public routes', () => {
+    const context = createMockExecutionContext(null);
+    jest.spyOn(reflector, 'getAllAndOverride').mockReturnValue(true);
+
+    expect(guard.canActivate(context)).toBe(true);
   });
 });

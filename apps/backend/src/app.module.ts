@@ -1,7 +1,7 @@
 import { Module } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
 import { ThrottlerModule } from '@nestjs/throttler';
-import { APP_GUARD } from '@nestjs/core';
+import { APP_GUARD, Reflector } from '@nestjs/core';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
 import { PrismaModule } from './prisma/prisma.module';
@@ -37,6 +37,7 @@ import { GymIsolationGuard } from './auth/guards/gym-isolation.guard';
   controllers: [AppController],
   providers: [
     AppService,
+    Reflector,
     // Global guards
     {
       provide: APP_GUARD,
