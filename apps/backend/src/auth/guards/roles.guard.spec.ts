@@ -32,7 +32,10 @@ describe('RolesGuard', () => {
 
   it('should allow access if no roles are required', () => {
     const context = createMockExecutionContext(null, null);
-    jest.spyOn(reflector, 'getAllAndOverride').mockReturnValue(null);
+    jest
+      .spyOn(reflector, 'getAllAndOverride')
+      .mockReturnValueOnce(false) // isPublic
+      .mockReturnValueOnce(null); // roles
 
     expect(guard.canActivate(context)).toBe(true);
   });
@@ -48,7 +51,8 @@ describe('RolesGuard', () => {
     const context = createMockExecutionContext(user, [UserRole.GYM_ADMIN]);
     jest
       .spyOn(reflector, 'getAllAndOverride')
-      .mockReturnValue([UserRole.GYM_ADMIN]);
+      .mockReturnValueOnce(false) // isPublic
+      .mockReturnValueOnce([UserRole.GYM_ADMIN]); // roles
 
     expect(guard.canActivate(context)).toBe(true);
   });
@@ -64,7 +68,8 @@ describe('RolesGuard', () => {
     const context = createMockExecutionContext(user, [UserRole.GYM_ADMIN]);
     jest
       .spyOn(reflector, 'getAllAndOverride')
-      .mockReturnValue([UserRole.GYM_ADMIN]);
+      .mockReturnValueOnce(false) // isPublic
+      .mockReturnValueOnce([UserRole.GYM_ADMIN]); // roles
 
     expect(() => guard.canActivate(context)).toThrow(ForbiddenException);
   });
@@ -73,7 +78,8 @@ describe('RolesGuard', () => {
     const context = createMockExecutionContext(null, [UserRole.GYM_ADMIN]);
     jest
       .spyOn(reflector, 'getAllAndOverride')
-      .mockReturnValue([UserRole.GYM_ADMIN]);
+      .mockReturnValueOnce(false) // isPublic
+      .mockReturnValueOnce([UserRole.GYM_ADMIN]); // roles
 
     expect(() => guard.canActivate(context)).toThrow(ForbiddenException);
   });
@@ -92,7 +98,15 @@ describe('RolesGuard', () => {
     ]);
     jest
       .spyOn(reflector, 'getAllAndOverride')
-      .mockReturnValue([UserRole.GYM_ADMIN, UserRole.TRAINER]);
+      .mockReturnValueOnce(false) // isPublic
+      .mockReturnValueOnce([UserRole.GYM_ADMIN, UserRole.TRAINER]); // roles
+
+    expect(guard.canActivate(context)).toBe(true);
+  });
+
+  it('should allow access to public routes', () => {
+    const context = createMockExecutionContext(null, [UserRole.GYM_ADMIN]);
+    jest.spyOn(reflector, 'getAllAndOverride').mockReturnValue(true);
 
     expect(guard.canActivate(context)).toBe(true);
   });
