@@ -6,9 +6,30 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { UserRole } from '@/types/auth';
 import { useAuth } from '@/contexts/auth.context';
 import { Building2, Users, TrendingUp, DollarSign, Activity, AlertCircle, CheckCircle2 } from 'lucide-react';
+import { useQuery } from '@tanstack/react-query';
+import { gymsService } from '@/services/gyms.service';
 
 export default function AdminDashboardPage() {
   const { user } = useAuth();
+
+  // Fetch gym stats
+  const { data: stats, isLoading: statsLoading } = useQuery({
+    queryKey: ['gym-stats'],
+    queryFn: gymsService.getStats,
+  });
+
+  // Fetch all gyms
+  const { data: gyms, isLoading: gymsLoading } = useQuery({
+    queryKey: ['gyms'],
+    queryFn: gymsService.getAll,
+  });
+
+  const formatCurrency = (amount: number) => {
+    return new Intl.NumberFormat('es-CR', {
+      style: 'currency',
+      currency: 'CRC',
+    }).format(Number(amount));
+  };
 
   return (
     <ProtectedRoute allowedRoles={[UserRole.SUPER_ADMIN]}>
@@ -40,9 +61,13 @@ export default function AdminDashboardPage() {
                 </div>
               </CardHeader>
               <CardContent>
-                <CardTitle className="text-4xl font-bold text-dark mb-2">0</CardTitle>
+                <CardTitle className="text-4xl font-bold text-dark mb-2">
+                  {statsLoading ? '...' : stats?.totalGyms || 0}
+                </CardTitle>
                 <div className="flex items-center gap-2">
-                  <span className="text-sm text-primary font-medium">0 activos</span>
+                  <span className="text-sm text-primary font-medium">
+                    {statsLoading ? '...' : stats?.totalGyms || 0} activos
+                  </span>
                   <span className="text-xs text-gray-400">• 0 inactivos</span>
                 </div>
               </CardContent>
@@ -56,7 +81,9 @@ export default function AdminDashboardPage() {
                 </div>
               </CardHeader>
               <CardContent>
-                <CardTitle className="text-4xl font-bold text-dark mb-2">0</CardTitle>
+                <CardTitle className="text-4xl font-bold text-dark mb-2">
+                  {statsLoading ? '...' : stats?.totalUsers || 0}
+                </CardTitle>
                 <p className="text-sm text-gray-500">En toda la plataforma</p>
               </CardContent>
             </Card>
@@ -69,7 +96,9 @@ export default function AdminDashboardPage() {
                 </div>
               </CardHeader>
               <CardContent>
-                <CardTitle className="text-4xl font-bold text-dark mb-2">$0</CardTitle>
+                <CardTitle className="text-4xl font-bold text-dark mb-2">
+                  {statsLoading ? '...' : formatCurrency(Number(stats?.totalRevenue || 0))}
+                </CardTitle>
                 <div className="flex items-center gap-1">
                   <TrendingUp className="h-4 w-4 text-green-600" />
                   <span className="text-sm text-green-600 font-medium">+0%</span>
@@ -107,13 +136,37 @@ export default function AdminDashboardPage() {
                 </div>
               </CardHeader>
               <CardContent className="pt-6">
-                <div className="flex flex-col items-center justify-center py-8 text-center">
-                  <div className="p-4 bg-bone rounded-full mb-4">
-                    <Building2 className="h-8 w-8 text-gray-400" />
+                {gymsLoading ? (
+                  <div className="flex items-center justify-center py-8">
+                    <p className="text-sm text-gray-500">Cargando...</p>
                   </div>
-                  <p className="text-sm text-gray-500">No hay gimnasios registrados</p>
-                  <p className="text-xs text-gray-400 mt-1">Los nuevos gimnasios aparecerán aquí</p>
-                </div>
+                ) : gyms && gyms.length > 0 ? (
+                  <div className="space-y-4">
+                    {gyms.slice(0, 5).map((gym) => (
+                      <div key={gym.id} className="flex items-center justify-between p-3 bg-bone rounded-lg hover:bg-gray-100 transition-colors">
+                        <div>
+                          <p className="font-semibold text-dark">{gym.name}</p>
+                          <p className="text-xs text-gray-500">
+                            {gym._count.users} usuarios • {gym._count.clients} clientes
+                          </p>
+                        </div>
+                        <div className="text-right">
+                          <p className="text-xs text-gray-400">
+                            {new Date(gym.createdAt).toLocaleDateString('es-CR')}
+                          </p>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="flex flex-col items-center justify-center py-8 text-center">
+                    <div className="p-4 bg-bone rounded-full mb-4">
+                      <Building2 className="h-8 w-8 text-gray-400" />
+                    </div>
+                    <p className="text-sm text-gray-500">No hay gimnasios registrados</p>
+                    <p className="text-xs text-gray-400 mt-1">Los nuevos gimnasios aparecerán aquí</p>
+                  </div>
+                )}
               </CardContent>
             </Card>
 
@@ -163,7 +216,9 @@ export default function AdminDashboardPage() {
                     </div>
                     <span className="text-sm font-medium text-dark">Gimnasios Activos</span>
                   </div>
-                  <span className="text-lg font-bold text-dark">0</span>
+                  <span className="text-lg font-bold text-dark">
+                    {statsLoading ? '...' : stats?.totalGyms || 0}
+                  </span>
                 </div>
                 <div className="flex items-center justify-between p-4 bg-bone rounded-xl hover:bg-gray-100 transition-colors">
                   <div className="flex items-center gap-3">
@@ -181,7 +236,7 @@ export default function AdminDashboardPage() {
                     </div>
                     <span className="text-sm font-medium text-dark">Pagos Pendientes</span>
                   </div>
-                  <span className="text-lg font-bold text-dark">$0</span>
+                  <span className="text-lg font-bold text-dark">₡0</span>
                 </div>
                 <div className="flex items-center justify-between p-4 bg-bone rounded-xl hover:bg-gray-100 transition-colors">
                   <div className="flex items-center gap-3">

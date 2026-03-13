@@ -18,9 +18,24 @@ import {
   CheckCircle2,
   BarChart3
 } from 'lucide-react';
+import { useQuery } from '@tanstack/react-query';
+import { dashboardService } from '@/services/dashboard.service';
 
 export default function DashboardPage() {
   const { user } = useAuth();
+
+  // Fetch metrics based on role
+  const { data: gymMetrics, isLoading: gymMetricsLoading } = useQuery({
+    queryKey: ['gym-metrics'],
+    queryFn: dashboardService.getGymMetrics,
+    enabled: user?.role === UserRole.GYM_ADMIN || user?.role === UserRole.RECEPTIONIST,
+  });
+
+  const { data: trainerMetrics, isLoading: trainerMetricsLoading } = useQuery({
+    queryKey: ['trainer-metrics'],
+    queryFn: dashboardService.getTrainerMetrics,
+    enabled: user?.role === UserRole.TRAINER,
+  });
 
   // Get role-specific title and subtitle
   const getRoleInfo = () => {
@@ -54,6 +69,15 @@ export default function DashboardPage() {
 
   const roleInfo = getRoleInfo();
   const RoleIcon = roleInfo.icon;
+
+  const formatCurrency = (amount: number) => {
+    return new Intl.NumberFormat('es-CR', {
+      style: 'currency',
+      currency: 'CRC',
+    }).format(Number(amount));
+  };
+
+  const isLoading = gymMetricsLoading || trainerMetricsLoading;
 
   return (
     <ProtectedRoute
@@ -93,7 +117,13 @@ export default function DashboardPage() {
                 </div>
               </CardHeader>
               <CardContent>
-                <CardTitle className="text-4xl font-bold text-dark mb-2">0</CardTitle>
+                <CardTitle className="text-4xl font-bold text-dark mb-2">
+                  {isLoading ? '...' : (
+                    user?.role === UserRole.TRAINER 
+                      ? trainerMetrics?.assignedClients || 0
+                      : gymMetrics?.activeClients || 0
+                  )}
+                </CardTitle>
                 {user?.role !== UserRole.TRAINER && (
                   <div className="flex items-center gap-1">
                     <TrendingUp className="h-4 w-4 text-green-600" />
@@ -117,7 +147,9 @@ export default function DashboardPage() {
                   </div>
                 </CardHeader>
                 <CardContent>
-                  <CardTitle className="text-4xl font-bold text-dark mb-2">0</CardTitle>
+                  <CardTitle className="text-4xl font-bold text-dark mb-2">
+                    {isLoading ? '...' : gymMetrics?.activeMemberships || 0}
+                  </CardTitle>
                   <div className="flex items-center gap-1">
                     <TrendingUp className="h-4 w-4 text-green-600" />
                     <span className="text-sm text-green-600 font-medium">+0%</span>
@@ -137,7 +169,9 @@ export default function DashboardPage() {
                   </div>
                 </CardHeader>
                 <CardContent>
-                  <CardTitle className="text-4xl font-bold text-dark mb-2">0</CardTitle>
+                  <CardTitle className="text-4xl font-bold text-dark mb-2">
+                    {isLoading ? '...' : trainerMetrics?.routinesCreated || 0}
+                  </CardTitle>
                   <p className="text-sm text-gray-500">Este mes</p>
                 </CardContent>
               </Card>
@@ -153,7 +187,9 @@ export default function DashboardPage() {
                   </div>
                 </CardHeader>
                 <CardContent>
-                  <CardTitle className="text-4xl font-bold text-dark mb-2">$0</CardTitle>
+                  <CardTitle className="text-4xl font-bold text-dark mb-2">
+                    {isLoading ? '...' : formatCurrency(Number(gymMetrics?.monthlyRevenue || 0))}
+                  </CardTitle>
                   <div className="flex items-center gap-1">
                     <TrendingUp className="h-4 w-4 text-green-600" />
                     <span className="text-sm text-green-600 font-medium">+0%</span>
@@ -173,7 +209,9 @@ export default function DashboardPage() {
                   </div>
                 </CardHeader>
                 <CardContent>
-                  <CardTitle className="text-4xl font-bold text-dark mb-2">0</CardTitle>
+                  <CardTitle className="text-4xl font-bold text-dark mb-2">
+                    {isLoading ? '...' : gymMetrics?.newClients || 0}
+                  </CardTitle>
                   <p className="text-sm text-dark/70 font-medium">Este mes</p>
                 </CardContent>
               </Card>
@@ -264,23 +302,58 @@ export default function DashboardPage() {
                 </div>
               </CardHeader>
               <CardContent className="pt-6">
-                <div className="flex flex-col items-center justify-center py-8 text-center">
-                  <div className="p-4 bg-green-50 rounded-full mb-4">
-                    <CheckCircle2 className="h-8 w-8 text-green-600" />
+                {isLoading ? (
+                  <div className="flex items-center justify-center py-8">
+                    <p className="text-sm text-gray-500">Cargando...</p>
                   </div>
-                  <p className="text-sm text-gray-500">
-                    {user?.role === UserRole.TRAINER
-                      ? 'No tienes clientes asignados'
-                      : user?.role === UserRole.RECEPTIONIST
-                      ? 'No hay membresías por vencer hoy'
-                      : 'No hay membresías por vencer'}
-                  </p>
-                  <p className="text-xs text-gray-400 mt-1">
-                    {user?.role === UserRole.TRAINER
-                      ? 'Los clientes asignados aparecerán aquí'
-                      : 'Todas las membresías están al día'}
-                  </p>
-                </div>
+                ) : user?.role === UserRole.TRAINER && trainerMetrics?.assignedClientsList && trainerMetrics.assignedClientsList.length > 0 ? (
+                  <div className="space-y-3">
+                    {trainerMetrics.assignedClientsList.map((client) => (
+                      <div key={client.id} className="flex items-center justify-between p-3 bg-bone rounded-lg hover:bg-gray-100 transition-colors">
+                        <div>
+                          <p className="font-semibold text-dark">{client.firstName} {client.lastName}</p>
+                          <p className="text-xs text-gray-500">{client.email}</p>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                ) : user?.role !== UserRole.TRAINER && gymMetrics?.expiringMemberships && gymMetrics.expiringMemberships.length > 0 ? (
+                  <div className="space-y-3">
+                    {gymMetrics.expiringMemberships.map((membership) => (
+                      <div key={membership.id} className="flex items-center justify-between p-3 bg-bone rounded-lg hover:bg-gray-100 transition-colors">
+                        <div>
+                          <p className="font-semibold text-dark">
+                            {membership.client.firstName} {membership.client.lastName}
+                          </p>
+                          <p className="text-xs text-gray-500">{membership.client.email}</p>
+                        </div>
+                        <div className="text-right">
+                          <p className="text-xs text-orange-600 font-medium">
+                            {new Date(membership.endDate).toLocaleDateString('es-CR')}
+                          </p>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="flex flex-col items-center justify-center py-8 text-center">
+                    <div className="p-4 bg-green-50 rounded-full mb-4">
+                      <CheckCircle2 className="h-8 w-8 text-green-600" />
+                    </div>
+                    <p className="text-sm text-gray-500">
+                      {user?.role === UserRole.TRAINER
+                        ? 'No tienes clientes asignados'
+                        : user?.role === UserRole.RECEPTIONIST
+                        ? 'No hay membresías por vencer hoy'
+                        : 'No hay membresías por vencer'}
+                    </p>
+                    <p className="text-xs text-gray-400 mt-1">
+                      {user?.role === UserRole.TRAINER
+                        ? 'Los clientes asignados aparecerán aquí'
+                        : 'Todas las membresías están al día'}
+                    </p>
+                  </div>
+                )}
               </CardContent>
             </Card>
           </div>
@@ -346,4 +419,3 @@ export default function DashboardPage() {
     </ProtectedRoute>
   );
 }
-

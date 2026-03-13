@@ -9,6 +9,9 @@ import { AuthModule } from './auth/auth.module';
 import { JwtAuthGuard } from './auth/guards/jwt-auth.guard';
 import { RolesGuard } from './auth/guards/roles.guard';
 import { GymIsolationGuard } from './auth/guards/gym-isolation.guard';
+import { GymsModule } from './gyms/gyms.module';
+import { DashboardService } from './dashboard/dashboard.service';
+import { DashboardModule } from './dashboard/dashboard.module';
 
 @Module({
   imports: [
@@ -32,6 +35,10 @@ import { GymIsolationGuard } from './auth/guards/gym-isolation.guard';
     // Authentication
     AuthModule,
 
+    GymsModule,
+
+    DashboardModule,
+
     // Feature modules will be added here
   ],
   controllers: [AppController],
@@ -51,6 +58,7 @@ import { GymIsolationGuard } from './auth/guards/gym-isolation.guard';
       provide: APP_GUARD,
       useClass: GymIsolationGuard,
     },
+    DashboardService,
   ],
 })
 export class AppModule {}
