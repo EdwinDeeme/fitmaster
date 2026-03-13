@@ -48,14 +48,14 @@ export default function AdminDashboardPage() {
           <div className="bg-gradient-to-r from-dark to-gray-800 rounded-2xl p-8 text-white shadow-lg">
             <div className="flex items-center justify-between">
               <div>
-                <h2 className="text-4xl font-bold mb-2">Dashboard de Plataforma</h2>
+                <h2 className="text-4xl font-bold mb-2">Panel de Control</h2>
                 <p className="text-gray-300 text-lg">
-                  Bienvenido de vuelta, <span className="text-green-700 font-semibold">{user?.firstName}</span>
+                  Bienvenido de vuelta, <span className="text-primary font-semibold">{user?.firstName}</span>
                 </p>
               </div>
-              <div className="hidden md:flex items-center gap-2 bg-primary/10 px-4 py-2 rounded-lg border border-primary/30">
-                <Activity className="h-5 w-5 text-green-700" />
-                <span className="text-green-700 font-semibold">Sistema Activo</span>
+              <div className="hidden md:flex items-center gap-2 bg-gradient-to-r from-primary via-primary to-primary/80 px-4 py-2 rounded-lg shadow-md">
+                <Activity className="h-5 w-5 text-dark" />
+                <span className="text-dark font-semibold">Sistema Activo</span>
               </div>
             </div>
           </div>
@@ -152,23 +152,54 @@ export default function AdminDashboardPage() {
                     <p className="text-sm text-gray-500">Cargando...</p>
                   </div>
                 ) : gyms && gyms.length > 0 ? (
-                  <div className="space-y-4">
+                  <div className="space-y-3">
                     {gyms.slice(0, 5).map((gym) => (
                       <div 
                         key={gym.id} 
                         onClick={() => window.location.href = `/admin/gyms/${gym.id}`}
-                        className="flex items-center justify-between p-3 bg-bone rounded-lg hover:bg-gray-100 transition-colors cursor-pointer"
+                        className="flex items-center gap-4 p-4 bg-gradient-to-r from-bone to-white rounded-xl hover:shadow-md hover:scale-[1.02] transition-all cursor-pointer border border-gray-100"
                       >
-                        <div>
-                          <p className="font-semibold text-dark">{gym.name}</p>
-                          <p className="text-xs text-gray-500">
-                            {gym._count.users} usuarios • {gym._count.clients} clientes
-                          </p>
+                        {/* Icono del gimnasio */}
+                        <div className="flex-shrink-0">
+                          <div className="p-3 bg-primary/10 rounded-xl">
+                            <Building2 className="h-6 w-6 text-green-700" />
+                          </div>
                         </div>
-                        <div className="text-right">
-                          <p className="text-xs text-gray-400">
-                            {formatDate(gym.createdAt)}
-                          </p>
+
+                        {/* Información principal */}
+                        <div className="flex-1 min-w-0">
+                          <h4 className="font-semibold text-dark text-base mb-1 truncate">
+                            {gym.name}
+                          </h4>
+                          <div className="flex items-center gap-4 text-xs text-gray-500">
+                            <div className="flex items-center gap-1">
+                              <Users className="h-3.5 w-3.5 text-gray-400" />
+                              <span>{gym._count.users} staff</span>
+                            </div>
+                            <div className="flex items-center gap-1">
+                              <Users className="h-3.5 w-3.5 text-blue-400" />
+                              <span>{gym._count.clients} clientes</span>
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* Fecha y flecha */}
+                        <div className="flex items-center gap-3 flex-shrink-0">
+                          <div className="text-right">
+                            <p className="text-xs text-gray-400">
+                              {formatDate(gym.createdAt)}
+                            </p>
+                          </div>
+                          <div className="p-2 bg-gray-100 rounded-lg group-hover:bg-primary/10 transition-colors">
+                            <svg 
+                              className="h-4 w-4 text-gray-400" 
+                              fill="none" 
+                              stroke="currentColor" 
+                              viewBox="0 0 24 24"
+                            >
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                            </svg>
+                          </div>
                         </div>
                       </div>
                     ))}
