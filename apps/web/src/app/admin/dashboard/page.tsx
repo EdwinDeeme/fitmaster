@@ -31,6 +31,15 @@ export default function AdminDashboardPage() {
     }).format(Number(amount));
   };
 
+  const formatDate = (dateString: string) => {
+    const date = new Date(dateString);
+    return date.toLocaleDateString('es-ES', {
+      day: 'numeric',
+      month: 'long',
+      year: 'numeric'
+    });
+  };
+
   return (
     <ProtectedRoute allowedRoles={[UserRole.SUPER_ADMIN]}>
       <DashboardLayout>
@@ -41,12 +50,12 @@ export default function AdminDashboardPage() {
               <div>
                 <h2 className="text-4xl font-bold mb-2">Dashboard de Plataforma</h2>
                 <p className="text-gray-300 text-lg">
-                  Bienvenido de vuelta, <span className="text-primary font-semibold">{user?.firstName}</span>
+                  Bienvenido de vuelta, <span className="text-green-700 font-semibold">{user?.firstName}</span>
                 </p>
               </div>
               <div className="hidden md:flex items-center gap-2 bg-primary/10 px-4 py-2 rounded-lg border border-primary/30">
-                <Activity className="h-5 w-5 text-primary" />
-                <span className="text-primary font-semibold">Sistema Activo</span>
+                <Activity className="h-5 w-5 text-green-700" />
+                <span className="text-green-700 font-semibold">Sistema Activo</span>
               </div>
             </div>
           </div>
@@ -57,7 +66,7 @@ export default function AdminDashboardPage() {
               <CardHeader className="flex flex-row items-center justify-between pb-2">
                 <CardDescription className="text-gray-600">Total Gimnasios</CardDescription>
                 <div className="p-3 bg-primary/10 rounded-xl">
-                  <Building2 className="h-6 w-6 text-primary" />
+                  <Building2 className="h-6 w-6 text-green-700" />
                 </div>
               </CardHeader>
               <CardContent>
@@ -65,10 +74,12 @@ export default function AdminDashboardPage() {
                   {statsLoading ? '...' : stats?.totalGyms || 0}
                 </CardTitle>
                 <div className="flex items-center gap-2">
-                  <span className="text-sm text-primary font-medium">
-                    {statsLoading ? '...' : stats?.totalGyms || 0} activos
+                  <span className="text-sm text-green-700 font-medium">
+                    {statsLoading ? '...' : stats?.gymsByStatus?.active || 0} activos
                   </span>
-                  <span className="text-xs text-gray-400">• 0 inactivos</span>
+                  <span className="text-xs text-gray-400">
+                    • {statsLoading ? '...' : (stats?.gymsByStatus?.trial || 0)} en prueba
+                  </span>
                 </div>
               </CardContent>
             </Card>
@@ -127,7 +138,7 @@ export default function AdminDashboardPage() {
               <CardHeader className="border-b border-gray-100 pb-4">
                 <div className="flex items-center gap-3">
                   <div className="p-2 bg-primary/10 rounded-lg">
-                    <Building2 className="h-5 w-5 text-primary" />
+                    <Building2 className="h-5 w-5 text-green-700" />
                   </div>
                   <div>
                     <CardTitle className="text-dark">Gimnasios Recientes</CardTitle>
@@ -143,7 +154,11 @@ export default function AdminDashboardPage() {
                 ) : gyms && gyms.length > 0 ? (
                   <div className="space-y-4">
                     {gyms.slice(0, 5).map((gym) => (
-                      <div key={gym.id} className="flex items-center justify-between p-3 bg-bone rounded-lg hover:bg-gray-100 transition-colors">
+                      <div 
+                        key={gym.id} 
+                        onClick={() => window.location.href = `/admin/gyms/${gym.id}`}
+                        className="flex items-center justify-between p-3 bg-bone rounded-lg hover:bg-gray-100 transition-colors cursor-pointer"
+                      >
                         <div>
                           <p className="font-semibold text-dark">{gym.name}</p>
                           <p className="text-xs text-gray-500">
@@ -152,7 +167,7 @@ export default function AdminDashboardPage() {
                         </div>
                         <div className="text-right">
                           <p className="text-xs text-gray-400">
-                            {new Date(gym.createdAt).toLocaleDateString('es-CR')}
+                            {formatDate(gym.createdAt)}
                           </p>
                         </div>
                       </div>
@@ -208,44 +223,47 @@ export default function AdminDashboardPage() {
               </div>
             </CardHeader>
             <CardContent className="pt-6">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div className="flex items-center justify-between p-4 bg-bone rounded-xl hover:bg-gray-100 transition-colors">
-                  <div className="flex items-center gap-3">
-                    <div className="p-2 bg-primary/10 rounded-lg">
-                      <CheckCircle2 className="h-5 w-5 text-primary" />
-                    </div>
-                    <span className="text-sm font-medium text-dark">Gimnasios Activos</span>
+              <div className="grid grid-cols-4 gap-6">
+                <div className="flex items-center gap-3 p-4 bg-bone rounded-xl hover:bg-gray-100 transition-colors">
+                  <div className="p-2 bg-primary/10 rounded-lg">
+                    <CheckCircle2 className="h-5 w-5 text-green-700" />
                   </div>
-                  <span className="text-lg font-bold text-dark">
-                    {statsLoading ? '...' : stats?.totalGyms || 0}
-                  </span>
+                  <div className="flex-1">
+                    <p className="text-sm font-medium text-gray-600">Gimnasios Activos</p>
+                    <p className="text-2xl font-bold text-dark">
+                      {statsLoading ? '...' : stats?.totalGyms || 0}
+                    </p>
+                  </div>
                 </div>
-                <div className="flex items-center justify-between p-4 bg-bone rounded-xl hover:bg-gray-100 transition-colors">
-                  <div className="flex items-center gap-3">
-                    <div className="p-2 bg-gray-100 rounded-lg">
-                      <AlertCircle className="h-5 w-5 text-gray-500" />
-                    </div>
-                    <span className="text-sm font-medium text-dark">Gimnasios Inactivos</span>
+                
+                <div className="flex items-center gap-3 p-4 bg-bone rounded-xl hover:bg-gray-100 transition-colors">
+                  <div className="p-2 bg-gray-100 rounded-lg">
+                    <AlertCircle className="h-5 w-5 text-gray-500" />
                   </div>
-                  <span className="text-lg font-bold text-dark">0</span>
+                  <div className="flex-1">
+                    <p className="text-sm font-medium text-gray-600">Gimnasios Inactivos</p>
+                    <p className="text-2xl font-bold text-dark">0</p>
+                  </div>
                 </div>
-                <div className="flex items-center justify-between p-4 bg-bone rounded-xl hover:bg-gray-100 transition-colors">
-                  <div className="flex items-center gap-3">
-                    <div className="p-2 bg-orange-50 rounded-lg">
-                      <DollarSign className="h-5 w-5 text-orange-600" />
-                    </div>
-                    <span className="text-sm font-medium text-dark">Pagos Pendientes</span>
+                
+                <div className="flex items-center gap-3 p-4 bg-bone rounded-xl hover:bg-gray-100 transition-colors">
+                  <div className="p-2 bg-orange-50 rounded-lg">
+                    <DollarSign className="h-5 w-5 text-orange-600" />
                   </div>
-                  <span className="text-lg font-bold text-dark">₡0</span>
+                  <div className="flex-1">
+                    <p className="text-sm font-medium text-gray-600">Pagos Pendientes</p>
+                    <p className="text-2xl font-bold text-dark">₡0</p>
+                  </div>
                 </div>
-                <div className="flex items-center justify-between p-4 bg-bone rounded-xl hover:bg-gray-100 transition-colors">
-                  <div className="flex items-center gap-3">
-                    <div className="p-2 bg-blue-50 rounded-lg">
-                      <AlertCircle className="h-5 w-5 text-blue-600" />
-                    </div>
-                    <span className="text-sm font-medium text-dark">Tickets de Soporte</span>
+                
+                <div className="flex items-center gap-3 p-4 bg-bone rounded-xl hover:bg-gray-100 transition-colors">
+                  <div className="p-2 bg-blue-50 rounded-lg">
+                    <AlertCircle className="h-5 w-5 text-blue-600" />
                   </div>
-                  <span className="text-lg font-bold text-dark">0</span>
+                  <div className="flex-1">
+                    <p className="text-sm font-medium text-gray-600">Tickets de Soporte</p>
+                    <p className="text-2xl font-bold text-dark">0</p>
+                  </div>
                 </div>
               </div>
             </CardContent>

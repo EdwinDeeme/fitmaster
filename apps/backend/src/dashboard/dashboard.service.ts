@@ -6,6 +6,10 @@ export class DashboardService {
   constructor(private prisma: PrismaService) {}
 
   async getGymMetrics(gymId: string) {
+    if (!gymId) {
+      throw new Error('gymId is required for gym metrics');
+    }
+
     // Get active clients count
     const activeClients = await this.prisma.client.count({
       where: {
@@ -88,6 +92,10 @@ export class DashboardService {
   }
 
   async getTrainerMetrics(gymId: string, trainerId: string) {
+    if (!gymId) {
+      throw new Error('gymId is required for trainer metrics');
+    }
+
     // Get assigned clients (routines assigned by this trainer)
     const assignedClients = await this.prisma.routineAssignment.findMany({
       where: {

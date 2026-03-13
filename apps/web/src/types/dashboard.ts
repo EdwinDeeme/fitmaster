@@ -34,6 +34,12 @@ export interface GymStats {
   totalUsers: number;
   totalClients: number;
   totalRevenue: number;
+  gymsByStatus?: {
+    active: number;
+    suspended: number;
+    inactive: number;
+    trial: number;
+  };
 }
 
 export interface Gym {
@@ -42,11 +48,21 @@ export interface Gym {
   subdomain: string;
   country: string;
   timezone: string;
+  status: 'ACTIVE' | 'SUSPENDED' | 'INACTIVE' | 'TRIAL';
   createdAt: string;
   updatedAt: string;
   _count: {
     users: number;
     clients: number;
     memberships: number;
+  };
+  subscription?: {
+    id: string;
+    status: string;
+    plan: {
+      name: string;
+      price: number;
+      currency: string;
+    };
   };
 }

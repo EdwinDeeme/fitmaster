@@ -28,28 +28,30 @@ export class AuthService {
   async register(registerDto: RegisterDto): Promise<AuthResult> {
     const { gymId, email, password, role, firstName, lastName } = registerDto;
 
-    // Validate gym exists
-    const gym = await this.prisma.gym.findUnique({
-      where: { id: gymId },
-    });
+    // SUPER_ADMIN no necesita gymId
+    if (role !== 'SUPER_ADMIN') {
+      if (!gymId) {
+        throw new BadRequestException('gymId is required for non-SUPER_ADMIN users');
+      }
 
-    if (!gym) {
-      throw new NotFoundException(`Gym with id ${gymId} not found`);
+      // Validate gym exists
+      const gym = await this.prisma.gym.findUnique({
+        where: { id: gymId },
+      });
+
+      if (!gym) {
+        throw new NotFoundException(`Gym with id ${gymId} not found`);
+      }
     }
 
-    // Check if user already exists in this gym
+    // Check if user already exists with this email
     const existingUser = await this.prisma.user.findUnique({
-      where: {
-        gymId_email: {
-          gymId,
-          email,
-        },
-      },
+      where: { email },
     });
 
     if (existingUser) {
       throw new ConflictException(
-        `User with email ${email} already exists in this gym`,
+        `User with email ${email} already exists`,
       );
     }
 
@@ -59,7 +61,7 @@ export class AuthService {
     // Create user
     const user = await this.prisma.user.create({
       data: {
-        gymId,
+        gymId: gymId || null,
         email,
         passwordHash,
         role,
@@ -152,7 +154,7 @@ export class AuthService {
   private async generateAuthResult(user: User): Promise<AuthResult> {
     const payload: TokenPayload = {
       userId: user.id,
-      gymId: user.gymId,
+      gymId: user.gymId || null, // Puede ser null para SUPER_ADMIN
       role: user.role,
       email: user.email,
     };
@@ -170,7 +172,7 @@ export class AuthService {
 
     const userProfile: UserProfile = {
       id: user.id,
-      gymId: user.gymId,
+      gymId: user.gymId || null, // Puede ser null para SUPER_ADMIN
       email: user.email,
       role: user.role,
       firstName: user.firstName,

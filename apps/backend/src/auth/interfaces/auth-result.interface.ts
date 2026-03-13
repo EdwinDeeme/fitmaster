@@ -8,7 +8,7 @@ export interface AuthResult {
 
 export interface UserProfile {
   id: string;
-  gymId: string;
+  gymId: string | null; // Puede ser null para SUPER_ADMIN
   email: string;
   role: UserRole;
   firstName: string;
@@ -17,7 +17,7 @@ export interface UserProfile {
 
 export interface TokenPayload {
   userId: string;
-  gymId: string;
+  gymId: string | null; // Puede ser null para SUPER_ADMIN
   role: UserRole;
   email: string;
   iat?: number;

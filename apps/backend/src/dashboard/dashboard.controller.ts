@@ -16,12 +16,18 @@ export class DashboardController {
   @Get('metrics')
   @Roles(UserRole.GYM_ADMIN, UserRole.RECEPTIONIST)
   getGymMetrics(@CurrentUser() user: TokenPayload) {
+    if (!user.gymId) {
+      throw new Error('User does not belong to a gym');
+    }
     return this.dashboardService.getGymMetrics(user.gymId);
   }
 
   @Get('trainer-metrics')
   @Roles(UserRole.TRAINER)
   getTrainerMetrics(@CurrentUser() user: TokenPayload) {
+    if (!user.gymId) {
+      throw new Error('User does not belong to a gym');
+    }
     return this.dashboardService.getTrainerMetrics(user.gymId, user.userId);
   }
 }

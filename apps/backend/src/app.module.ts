@@ -10,6 +10,7 @@ import { JwtAuthGuard } from './auth/guards/jwt-auth.guard';
 import { RolesGuard } from './auth/guards/roles.guard';
 import { GymIsolationGuard } from './auth/guards/gym-isolation.guard';
 import { GymsModule } from './gyms/gyms.module';
+import { PlansModule } from './plans/plans.module';
 import { DashboardService } from './dashboard/dashboard.service';
 import { DashboardModule } from './dashboard/dashboard.module';
 
@@ -35,11 +36,10 @@ import { DashboardModule } from './dashboard/dashboard.module';
     // Authentication
     AuthModule,
 
+    // Feature modules
     GymsModule,
-
+    PlansModule,
     DashboardModule,
-
-    // Feature modules will be added here
   ],
   controllers: [AppController],
   providers: [

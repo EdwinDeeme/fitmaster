@@ -31,9 +31,14 @@ export class GymIsolationGuard implements CanActivate {
       throw new ForbiddenException('User not authenticated');
     }
 
-    // SUPER_ADMIN can access any gym
+    // SUPER_ADMIN can access any gym (no tiene gymId)
     if (user.role === UserRole.SUPER_ADMIN) {
       return true;
+    }
+
+    // Usuarios sin gymId que NO son SUPER_ADMIN no deberían existir
+    if (!user.gymId) {
+      throw new ForbiddenException('User does not belong to any gym');
     }
 
     // Extract gymId from request (params, query, or body)

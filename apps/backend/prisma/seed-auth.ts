@@ -23,16 +23,14 @@ async function seedAuth() {
   // Create test users
   const password = await bcrypt.hash('SecurePass123!', 12);
 
+  // SUPER_ADMIN - No tiene gymId porque administra toda la plataforma
   const superAdmin = await prisma.user.upsert({
     where: {
-      gymId_email: {
-        gymId: gym.id,
-        email: 'superadmin@fitmaster.com',
-      },
+      email: 'superadmin@fitmaster.com',
     },
     update: {},
     create: {
-      gymId: gym.id,
+      gymId: null, // SUPER_ADMIN no pertenece a ningún gimnasio
       email: 'superadmin@fitmaster.com',
       passwordHash: password,
       role: UserRole.SUPER_ADMIN,
@@ -41,12 +39,10 @@ async function seedAuth() {
     },
   });
 
+  // Usuarios del gimnasio - Estos SÍ tienen gymId
   const gymAdmin = await prisma.user.upsert({
     where: {
-      gymId_email: {
-        gymId: gym.id,
-        email: 'admin@testgym.com',
-      },
+      email: 'admin@testgym.com',
     },
     update: {},
     create: {
@@ -61,10 +57,7 @@ async function seedAuth() {
 
   const trainer = await prisma.user.upsert({
     where: {
-      gymId_email: {
-        gymId: gym.id,
-        email: 'trainer@testgym.com',
-      },
+      email: 'trainer@testgym.com',
     },
     update: {},
     create: {
@@ -79,10 +72,7 @@ async function seedAuth() {
 
   const receptionist = await prisma.user.upsert({
     where: {
-      gymId_email: {
-        gymId: gym.id,
-        email: 'receptionist@testgym.com',
-      },
+      email: 'receptionist@testgym.com',
     },
     update: {},
     create: {

@@ -21,6 +21,7 @@ model Gym {
   country   String   @default("CR")
   timezone  String   @default("America/Costa_Rica")
   settings  Json?
+  status    GymStatus @default(ACTIVE)
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
 
@@ -35,14 +36,22 @@ model Gym {
   physicalProgress   PhysicalProgress[]
   progressPhotos     ProgressPhoto[]
   maintenanceRecords MaintenanceRecord[]
+  subscription       Subscription?
 
   @@map("gyms")
 }
 
+enum GymStatus {
+  ACTIVE
+  SUSPENDED
+  INACTIVE
+  TRIAL
+}
+
 model User {
   id           String   @id @default(uuid())
-  gymId        String   @map("gym_id")
-  email        String
+  gymId        String?  @map("gym_id")
+  email        String   @unique
   passwordHash String   @map("password_hash")
   role         UserRole
   firstName    String   @map("first_name")
@@ -51,11 +60,11 @@ model User {
   updatedAt    DateTime @updatedAt @map("updated_at")
 
   // Relations
-  gym              Gym       @relation(fields: [gymId], references: [id], onDelete: Cascade)
+  gym              Gym?      @relation(fields: [gymId], references: [id], onDelete: Cascade)
   createdRoutines  Routine[]
 
-  @@unique([gymId, email])
   @@index([gymId, email])
+  @@index([email])
   @@map("users")
 }
 
@@ -398,3 +407,98 @@ enum DiscountType {
   PERCENTAGE
   FIXED_AMOUNT
 }
+
+// ============================================
+// SUBSCRIPTION PLANS (SUPER_ADMIN)
+// ============================================
+
+model Plan {
+  id            String   @id @default(uuid())
+  name          String
+  description   String?
+  price         Decimal  @db.Decimal(10, 2)
+  currency      String   @default("CRC")
+  interval      PlanInterval
+  features      Json     // Array de características del plan
+  limits        Json     // Límites: { maxClients, maxStaff, maxStorage, etc }
+  isActive      Boolean  @default(true) @map("is_active")
+  isPopular     Boolean  @default(false) @map("is_popular")
+  sortOrder     Int      @default(0) @map("sort_order")
+  createdAt     DateTime @default(now()) @map("created_at")
+  updatedAt     DateTime @updatedAt @map("updated_at")
+
+  // Relations
+  subscriptions Subscription[]
+
+  @@map("plans")
+}
+
+enum PlanInterval {
+  MONTHLY
+  QUARTERLY
+  ANNUAL
+}
+
+model Subscription {
+  id                String             @id @default(uuid())
+  gymId             String             @unique @map("gym_id")
+  planId            String             @map("plan_id")
+  status            SubscriptionStatus @default(ACTIVE)
+  startDate         DateTime           @map("start_date")
+  endDate           DateTime?          @map("end_date")
+  cancelAt          DateTime?          @map("cancel_at")
+  canceledAt        DateTime?          @map("canceled_at")
+  trialEndDate      DateTime?          @map("trial_end_date")
+  currentPeriodStart DateTime          @map("current_period_start")
+  currentPeriodEnd   DateTime          @map("current_period_end")
+  createdAt         DateTime           @default(now()) @map("created_at")
+  updatedAt         DateTime           @updatedAt @map("updated_at")
+
+  // Relations
+  gym     Gym              @relation(fields: [gymId], references: [id], onDelete: Cascade)
+  plan    Plan             @relation(fields: [planId], references: [id])
+  invoices Invoice[]
+
+  @@index([gymId])
+  @@index([planId])
+  @@map("subscriptions")
+}
+
+enum SubscriptionStatus {
+  ACTIVE
+  TRIALING
+  PAST_DUE
+  CANCELED
+  UNPAID
+}
+
+model Invoice {
+  id              String        @id @default(uuid())
+  subscriptionId  String        @map("subscription_id")
+  amount          Decimal       @db.Decimal(10, 2)
+  currency        String        @default("CRC")
+  status          InvoiceStatus @default(PENDING)
+  dueDate         DateTime      @map("due_date")
+  paidAt          DateTime?     @map("paid_at")
+  periodStart     DateTime      @map("period_start")
+  periodEnd       DateTime      @map("period_end")
+  invoiceNumber   String        @unique @map("invoice_number")
+  invoiceUrl      String?       @map("invoice_url")
+  createdAt       DateTime      @default(now()) @map("created_at")
+
+  // Relations
+  subscription Subscription @relation(fields: [subscriptionId], references: [id], onDelete: Cascade)
+
+  @@index([subscriptionId])
+  @@index([status])
+  @@map("invoices")
+}
+
+enum InvoiceStatus {
+  PENDING
+  PAID
+  OVERDUE
+  VOID
+  REFUNDED
+}
+

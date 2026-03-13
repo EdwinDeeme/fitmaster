@@ -8,7 +8,7 @@ export enum UserRole {
 
 export interface User {
   id: string;
-  gymId: string;
+  gymId: string | null; // Puede ser null para SUPER_ADMIN
   email: string;
   role: UserRole;
   firstName: string;
@@ -27,7 +27,7 @@ export interface LoginCredentials {
 }
 
 export interface RegisterData {
-  gymId: string;
+  gymId?: string; // Opcional para SUPER_ADMIN
   email: string;
   password: string;
   role: UserRole;

@@ -35,6 +35,15 @@ export default function BillingPage() {
     }).format(amount);
   };
 
+  const formatDate = (dateString: string) => {
+    const date = new Date(dateString);
+    return date.toLocaleDateString('es-ES', {
+      day: 'numeric',
+      month: 'long',
+      year: 'numeric'
+    });
+  };
+
   const getStatusBadge = (status: string) => {
     const styles = {
       paid: 'bg-green-50 text-green-700 border-green-200',
@@ -99,7 +108,7 @@ export default function BillingPage() {
               <CardHeader className="flex flex-row items-center justify-between pb-2">
                 <CardDescription className="text-gray-600">Facturas Pagadas</CardDescription>
                 <div className="p-3 bg-primary/10 rounded-xl">
-                  <CheckCircle2 className="h-5 w-5 text-primary" />
+                  <CheckCircle2 className="h-5 w-5 text-green-700" />
                 </div>
               </CardHeader>
               <CardContent>
@@ -168,7 +177,7 @@ export default function BillingPage() {
                         </td>
                         <td className="py-4 px-4">
                           <span className="text-sm text-gray-600">
-                            {new Date(invoice.date).toLocaleDateString('es-CR')}
+                            {formatDate(invoice.date)}
                           </span>
                         </td>
                         <td className="py-4 px-4">

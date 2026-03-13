@@ -312,12 +312,10 @@ describe('AuthService', () => {
 
       await service.register(registerDto);
 
+      // Ahora busca por email único, no por gymId_email
       expect(mockPrismaService.user.findUnique).toHaveBeenCalledWith({
         where: {
-          gymId_email: {
-            gymId: registerDto.gymId,
-            email: registerDto.email,
-          },
+          email: registerDto.email,
         },
       });
     });
