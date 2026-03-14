@@ -13,6 +13,7 @@ import { GymsModule } from './gyms/gyms.module';
 import { PlansModule } from './plans/plans.module';
 import { DashboardService } from './dashboard/dashboard.service';
 import { DashboardModule } from './dashboard/dashboard.module';
+import { RoutinesModule } from './routines/routines.module';
 
 @Module({
   imports: [
@@ -40,6 +41,7 @@ import { DashboardModule } from './dashboard/dashboard.module';
     GymsModule,
     PlansModule,
     DashboardModule,
+    RoutinesModule,
   ],
   controllers: [AppController],
   providers: [
