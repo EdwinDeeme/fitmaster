@@ -5,6 +5,7 @@ import { APP_GUARD, Reflector } from '@nestjs/core';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
 import { PrismaModule } from './prisma/prisma.module';
+import { CacheModule } from './cache/cache.module';
 import { AuthModule } from './auth/auth.module';
 import { JwtAuthGuard } from './auth/guards/jwt-auth.guard';
 import { RolesGuard } from './auth/guards/roles.guard';
@@ -25,6 +26,9 @@ import { RoutinesModule } from './routines/routines.module';
 
     // Prisma
     PrismaModule,
+
+    // Cache
+    CacheModule,
 
     // Rate limiting
     ThrottlerModule.forRoot([
