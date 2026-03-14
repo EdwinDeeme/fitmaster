@@ -45,4 +45,9 @@ export const routinesService = {
     const response = await api.get(`/routines/client/${clientId}`);
     return response.data;
   },
+
+  getRecent: async (limit = 5): Promise<Routine[]> => {
+    const response = await api.get('/routines/recent', { params: { limit } });
+    return response.data;
+  },
 };

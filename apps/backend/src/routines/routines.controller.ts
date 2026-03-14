@@ -95,4 +95,19 @@ export class RoutinesController {
   getClientRoutine(@CurrentUser() user: any, @Param('clientId') clientId: string) {
     return this.routinesService.getClientRoutine(user.gymId, clientId);
   }
+
+  @Get('recent')
+  @Roles('GYM_ADMIN', 'TRAINER', 'RECEPTIONIST')
+  @ApiOperation({ summary: 'Get recent routines' })
+  getRecentRoutines(
+    @CurrentUser() user: any,
+    @Query('limit') limit?: string,
+  ) {
+    const userId = user.role === 'TRAINER' ? user.userId : undefined;
+    return this.routinesService.getRecentRoutines(
+      user.gymId, 
+      userId, 
+      limit ? parseInt(limit) : 5
+    );
+  }
 }

@@ -9,6 +9,7 @@ import {
   Min,
   Max,
   ArrayMinSize,
+  IsObject,
 } from 'class-validator';
 import { Type } from 'class-transformer';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
@@ -84,5 +85,7 @@ export class CreateRoutineDto {
   durationWeeks: number;
 
   @ApiProperty({ description: 'Weekly schedule as object with day keys' })
+  @IsObject()
+  @IsNotEmpty()
   weeklySchedule: Record<string, WorkoutDayDto>;
 }

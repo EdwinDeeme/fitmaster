@@ -184,4 +184,22 @@ export class RoutinesService {
 
     return assignment?.routine || null;
   }
+
+  async getRecentRoutines(gymId: string, userId?: string, limit = 5) {
+    const where: any = { gymId };
+    
+    // If userId provided (trainer), filter by their routines
+    if (userId) {
+      where.createdBy = userId;
+    }
+
+    return this.prisma.routine.findMany({
+      where,
+      include: {
+        _count: { select: { assignments: true } },
+      },
+      orderBy: { updatedAt: 'desc' },
+      take: limit,
+    });
+  }
 }
