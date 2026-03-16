@@ -31,7 +31,7 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
         { name: 'Dashboard', href: '/dashboard' },
         { name: 'Clientes', href: '/clients' },
         { name: 'Membresías', href: '/memberships' },
-        { name: 'Pagos', href: '/payments' },
+        { name: 'Finanzas', href: '/finances' },
         { name: 'Rutinas', href: '/routines' },
         { name: 'Equipamiento', href: '/equipment' },
         { name: 'Staff', href: '/staff' },
@@ -52,7 +52,7 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
         { name: 'Dashboard', href: '/dashboard' },
         { name: 'Clientes', href: '/clients' },
         { name: 'Membresías', href: '/memberships' },
-        { name: 'Pagos', href: '/payments' },
+        { name: 'Finanzas', href: '/finances' },
       ];
     }
 
