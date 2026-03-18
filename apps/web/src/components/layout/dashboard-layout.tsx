@@ -6,6 +6,7 @@ import { Logo } from '@/components/brand/logo';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { LogOut } from 'lucide-react';
+import { useEffect, useState } from 'react';
 
 interface DashboardLayoutProps {
   children: React.ReactNode;
@@ -14,6 +15,11 @@ interface DashboardLayoutProps {
 export function DashboardLayout({ children }: DashboardLayoutProps) {
   const { user, logout } = useAuth();
   const pathname = usePathname();
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   // Navigation based on role
   const getNavigation = () => {
@@ -82,7 +88,7 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
 
             {/* Navigation */}
             <nav className="hidden md:flex space-x-2">
-              {navigation.map((item) => (
+              {mounted && navigation.map((item) => (
                 <Link
                   key={item.name}
                   href={item.href}
@@ -103,12 +109,12 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
               <div className="flex items-center gap-2">
                 <div className="w-10 h-10 rounded-full bg-gradient-to-br from-primary to-primary-dark flex items-center justify-center">
                   <span className="text-dark font-bold text-sm">
-                    {getUserInitials()}
+                    {mounted ? getUserInitials() : ''}
                   </span>
                 </div>
                 <div className="hidden lg:block text-sm">
                   <p className="font-semibold text-dark">
-                    {user?.firstName} {user?.lastName}
+                    {mounted ? `${user?.firstName} ${user?.lastName}` : ''}
                   </p>
                 </div>
               </div>

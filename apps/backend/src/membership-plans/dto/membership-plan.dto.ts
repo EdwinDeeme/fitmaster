@@ -1,4 +1,4 @@
-import { IsEnum, IsNotEmpty, IsNumber, IsOptional, IsString, Min } from 'class-validator';
+import { IsBoolean, IsEnum, IsNotEmpty, IsNumber, IsOptional, IsString, Min } from 'class-validator';
 import { MembershipType } from '@prisma/client';
 
 export class CreateMembershipPlanDto {
@@ -37,5 +37,6 @@ export class UpdateMembershipPlanDto {
   price?: number;
 
   @IsOptional()
+  @IsBoolean()
   isActive?: boolean;
 }

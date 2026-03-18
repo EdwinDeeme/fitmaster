@@ -7,6 +7,7 @@ export interface MembershipPlan {
   type: 'MONTHLY' | 'QUARTERLY' | 'ANNUAL';
   price: number;
   isActive: boolean;
+  activeUsers?: number;
 }
 
 export const membershipPlansService = {

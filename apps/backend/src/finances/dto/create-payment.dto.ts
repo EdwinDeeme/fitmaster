@@ -2,13 +2,13 @@ import { IsEnum, IsNotEmpty, IsNumber, IsOptional, IsString, Min } from 'class-v
 import { PaymentMethod } from '@prisma/client';
 
 export class CreatePaymentDto {
-  @IsNotEmpty()
+  @IsOptional()
   @IsString()
-  clientId: string;
+  clientId?: string;
 
-  @IsNotEmpty()
+  @IsOptional()
   @IsString()
-  membershipId: string;
+  membershipId?: string;
 
   @IsNumber()
   @Min(0)
@@ -24,6 +24,10 @@ export class CreatePaymentDto {
   @IsOptional()
   @IsString()
   sinpeReference?: string;
+
+  @IsOptional()
+  @IsString()
+  description?: string;
 
   @IsOptional()
   @IsString()

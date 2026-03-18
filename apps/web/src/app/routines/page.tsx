@@ -35,6 +35,7 @@ export default function RoutinesPage() {
   const { data: routines = [], isLoading } = useQuery({
     queryKey: ['routines', filters],
     queryFn: () => routinesService.getAll(filters),
+    staleTime: 30_000,
   });
 
   const closeModal = () => setModal({ type: 'none' });

@@ -37,6 +37,12 @@ export class FinancesController {
     return this.financesService.getPaymentById(user.gymId!, id);
   }
 
+  @Delete('payments/:id')
+  @Roles(UserRole.GYM_ADMIN)
+  deletePayment(@CurrentUser() user: TokenPayload, @Param('id') id: string) {
+    return this.financesService.deletePayment(user.gymId!, id);
+  }
+
   // Expenses
   @Post('expenses')
   @Roles(UserRole.GYM_ADMIN)

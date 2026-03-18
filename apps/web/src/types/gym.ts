@@ -51,8 +51,8 @@ export interface Membership {
 export interface Payment {
   id: string;
   gymId: string;
-  clientId: string;
-  membershipId: string;
+  clientId?: string;
+  membershipId?: string;
   amount: number;
   currency: string;
   method: PaymentMethod;
@@ -60,6 +60,7 @@ export interface Payment {
   sinpeReference?: string;
   metadata?: any;
   createdAt: string;
+  client?: Pick<Client, 'id' | 'firstName' | 'lastName' | 'email'>;
   membership?: Membership & { client?: Pick<Client, 'id' | 'firstName' | 'lastName' | 'email'> };
 }
 

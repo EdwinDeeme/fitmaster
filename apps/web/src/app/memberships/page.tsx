@@ -10,7 +10,7 @@ import { Badge } from '@/components/ui/badge';
 import { Modal } from '@/components/ui/modal';
 import { membershipPlansService } from '@/services/membership-plans.service';
 import { UserRole } from '@/types/auth';
-import { Plus, Search, CreditCard, Pencil, Trash2 } from 'lucide-react';
+import { Plus, Search, CreditCard, Trash2 } from 'lucide-react';
 import { MembershipPlanForm } from '@/components/memberships/membership-plan-form';
 
 const typeLabels: Record<string, string> = { MONTHLY: 'Mensual', QUARTERLY: 'Trimestral', ANNUAL: 'Anual' };
@@ -99,7 +99,8 @@ export default function MembershipsPage() {
               {filtered.map(plan => (
                 <div
                   key={plan.id}
-                  className={`bg-white rounded-2xl border-2 p-5 space-y-3 transition-opacity ${
+                  onClick={() => setEditPlan(plan)}
+                  className={`bg-white rounded-2xl border-2 p-5 space-y-3 transition-all cursor-pointer hover:border-primary/30 hover:shadow-md ${
                     plan.isActive ? 'border-gray-100' : 'border-gray-100 opacity-50'
                   }`}
                 >
@@ -120,23 +121,20 @@ export default function MembershipsPage() {
                   </p>
 
                   <div className="flex items-center justify-between pt-1 border-t border-gray-50">
-                    <Badge variant={plan.isActive ? 'success' : 'secondary'}>
-                      {plan.isActive ? 'Activa' : 'Inactiva'}
-                    </Badge>
-                    <div className="flex gap-1">
-                      <button
-                        onClick={() => setEditPlan(plan)}
-                        className="p-1.5 rounded-lg hover:bg-primary/10 text-primary transition-colors"
-                      >
-                        <Pencil className="h-4 w-4" />
-                      </button>
-                      <button
-                        onClick={() => { if (confirm('¿Eliminar esta membresía?')) deleteMutation.mutate(plan.id); }}
-                        className="p-1.5 rounded-lg hover:bg-red-50 text-red-500 transition-colors"
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </button>
+                    <div className="flex items-center gap-2">
+                      <Badge variant={plan.isActive ? 'success' : 'secondary'}>
+                        {plan.isActive ? 'Activa' : 'Inactiva'}
+                      </Badge>
+                      <span className="text-xs text-gray-400">
+                        {plan.activeUsers ?? 0} usuario{(plan.activeUsers ?? 0) !== 1 ? 's' : ''} activo{(plan.activeUsers ?? 0) !== 1 ? 's' : ''}
+                      </span>
                     </div>
+                    <button
+                      onClick={e => { e.stopPropagation(); if (confirm('¿Eliminar esta membresía?')) deleteMutation.mutate(plan.id); }}
+                      className="p-1.5 rounded-lg hover:bg-red-50 text-red-400 transition-colors"
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </button>
                   </div>
                 </div>
               ))}

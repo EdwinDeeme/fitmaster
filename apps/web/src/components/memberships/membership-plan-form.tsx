@@ -2,6 +2,7 @@
 
 import { useForm } from 'react-hook-form';
 import { useMutation } from '@tanstack/react-query';
+import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -22,19 +23,40 @@ interface FormData {
   isActive: boolean;
 }
 
+function Switch({ checked, onChange }: { checked: boolean; onChange: (v: boolean) => void }) {
+  return (
+    <button
+      type="button"
+      role="switch"
+      aria-checked={checked}
+      onClick={() => onChange(!checked)}
+      className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 ${
+        checked ? 'bg-primary' : 'bg-gray-200'
+      }`}
+    >
+      <span
+        className={`inline-block h-4 w-4 transform rounded-full bg-white shadow transition-transform ${
+          checked ? 'translate-x-6' : 'translate-x-1'
+        }`}
+      />
+    </button>
+  );
+}
+
 export function MembershipPlanForm({ plan, onSuccess, onCancel }: Props) {
+  const [isActive, setIsActive] = useState(plan?.isActive ?? true);
+
   const { register, handleSubmit, formState: { errors } } = useForm<FormData>({
     defaultValues: plan ? {
       name: plan.name,
       description: plan.description,
       type: plan.type,
       price: plan.price,
-      isActive: plan.isActive,
-    } : { type: 'MONTHLY', isActive: true },
+    } : { type: 'MONTHLY' },
   });
 
   const mutation = useMutation({
-    mutationFn: ({ isActive, ...data }: FormData) => plan
+    mutationFn: (data: Omit<FormData, 'isActive'>) => plan
       ? membershipPlansService.update(plan.id, { ...data, isActive, price: Number(data.price) })
       : membershipPlansService.create({ name: data.name, description: data.description, type: data.type, price: Number(data.price) }),
     onSuccess,
@@ -67,9 +89,12 @@ export function MembershipPlanForm({ plan, onSuccess, onCancel }: Props) {
         </div>
       </div>
       {plan && (
-        <div className="flex items-center gap-2">
-          <input type="checkbox" id="isActive" {...register('isActive')} />
-          <Label htmlFor="isActive">Plan activo</Label>
+        <div className="flex items-center justify-between p-3 bg-bone rounded-xl">
+          <div>
+            <p className="text-sm font-medium text-dark">Plan activo</p>
+            <p className="text-xs text-gray-400">Los clientes pueden suscribirse a este plan</p>
+          </div>
+          <Switch checked={isActive} onChange={setIsActive} />
         </div>
       )}
       {mutation.isError && (

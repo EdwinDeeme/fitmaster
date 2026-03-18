@@ -11,7 +11,7 @@ import { Modal } from '@/components/ui/modal';
 import { clientsService } from '@/services/clients.service';
 import { UserRole } from '@/types/auth';
 import { Client } from '@/types/gym';
-import { Plus, Search, Eye, Edit2, Trash2, Users } from 'lucide-react';
+import { Plus, Search, Edit2, Trash2, Users } from 'lucide-react';
 import { ClientForm } from '@/components/clients/client-form';
 import { ClientFullForm } from '@/components/clients/client-full-form';
 import { ClientDetail } from '@/components/clients/client-detail';
@@ -81,7 +81,7 @@ export default function ClientsPage() {
               <table className="w-full">
                 <thead className="bg-bone border-b border-gray-100">
                   <tr>
-                    {['Cliente', 'Email', 'Teléfono', 'Membresía', 'Vence', 'Estado', 'Acciones'].map(h => (
+                    {['Cliente', 'Email', 'Teléfono', 'Membresía', 'Vence', 'Estado', ''].map(h => (
                       <th key={h} className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">{h}</th>
                     ))}
                   </tr>
@@ -92,7 +92,11 @@ export default function ClientsPage() {
                   ) : filtered.length === 0 ? (
                     <tr><td colSpan={7} className="px-4 py-8 text-center text-gray-400">No se encontraron clientes</td></tr>
                   ) : filtered.map(client => (
-                    <tr key={client.id} className="hover:bg-bone/50 transition-colors">
+                    <tr
+                      key={client.id}
+                      onClick={() => setViewClient(client)}
+                      className="hover:bg-bone/50 transition-colors cursor-pointer"
+                    >
                       <td className="px-4 py-3">
                         <div className="flex items-center gap-3">
                           <div className="w-8 h-8 rounded-full bg-primary/20 flex items-center justify-center text-xs font-bold text-dark">
@@ -108,9 +112,8 @@ export default function ClientsPage() {
                         {client.memberships?.[0] ? new Date(client.memberships[0].endDate).toLocaleDateString('es-CR') : '—'}
                       </td>
                       <td className="px-4 py-3">{statusBadge(client.status)}</td>
-                      <td className="px-4 py-3">
+                      <td className="px-4 py-3" onClick={e => e.stopPropagation()}>
                         <div className="flex items-center gap-1">
-                          <button onClick={() => setViewClient(client)} className="p-1.5 rounded-lg hover:bg-blue-50 text-blue-600 transition-colors"><Eye className="h-4 w-4" /></button>
                           <button onClick={() => setEditClient(client)} className="p-1.5 rounded-lg hover:bg-primary/10 text-primary transition-colors"><Edit2 className="h-4 w-4" /></button>
                           <button onClick={() => { if (confirm('¿Eliminar cliente?')) deleteMutation.mutate(client.id); }} className="p-1.5 rounded-lg hover:bg-red-50 text-red-500 transition-colors"><Trash2 className="h-4 w-4" /></button>
                         </div>
@@ -132,7 +135,7 @@ export default function ClientsPage() {
           {editClient && <ClientForm client={editClient} onSuccess={() => { setEditClient(null); qc.invalidateQueries({ queryKey: ['clients'] }); }} onCancel={() => setEditClient(null)} />}
         </Modal>
 
-        <Modal open={!!viewClient} onClose={() => setViewClient(null)} title="Detalle del Cliente" size="xl">
+        <Modal open={!!viewClient} onClose={() => setViewClient(null)} title="Detalle del Cliente" size="md">
           {viewClient && <ClientDetail clientId={viewClient.id} />}
         </Modal>
       </DashboardLayout>

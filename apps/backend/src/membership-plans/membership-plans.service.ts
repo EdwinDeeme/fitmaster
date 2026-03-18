@@ -12,11 +12,28 @@ export class MembershipPlansService {
     });
   }
 
-  findAll(gymId: string) {
-    return this.prisma.membershipPlan.findMany({
+  async findAll(gymId: string) {
+    const plans = await this.prisma.membershipPlan.findMany({
       where: { gymId },
       orderBy: { createdAt: 'desc' },
     });
+
+    // Count active memberships per type for this gym
+    const activeCounts = await this.prisma.membership.groupBy({
+      by: ['type'],
+      where: { gymId, status: { in: ['ACTIVE', 'EXPIRING_SOON'] } },
+      _count: { id: true },
+    });
+
+    const countMap: Record<string, number> = {};
+    for (const row of activeCounts) {
+      countMap[row.type] = row._count.id;
+    }
+
+    return plans.map(p => ({
+      ...p,
+      activeUsers: countMap[p.type] ?? 0,
+    }));
   }
 
   async update(gymId: string, id: string, dto: UpdateMembershipPlanDto) {

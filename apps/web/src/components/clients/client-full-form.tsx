@@ -3,6 +3,8 @@
 import { useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { useMutation, useQuery } from '@tanstack/react-query';
+import DatePicker from 'react-datepicker';
+import 'react-datepicker/dist/react-datepicker.css';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -20,15 +22,15 @@ interface Props {
 type Step = 'client' | 'membership' | 'payment';
 
 const STEPS: { key: Step; label: string; icon: React.ReactNode }[] = [
-  { key: 'client',     label: 'Datos del cliente', icon: <User size={14} /> },
-  { key: 'membership', label: 'Membresía',          icon: <CreditCard size={14} /> },
-  { key: 'payment',    label: 'Pago',               icon: <Banknote size={14} /> },
+  { key: 'client',     label: 'Datos del cliente', icon: <User size={15} /> },
+  { key: 'membership', label: 'Membresía',          icon: <CreditCard size={15} /> },
+  { key: 'payment',    label: 'Pago',               icon: <Banknote size={15} /> },
 ];
 
 function maxDateOfBirth() {
   const d = new Date();
   d.setFullYear(d.getFullYear() - 15);
-  return d.toISOString().split('T')[0];
+  return d;
 }
 
 function computeEndDate(startDate: string, type: string) {
@@ -40,23 +42,28 @@ function computeEndDate(startDate: string, type: string) {
 }
 
 interface ClientFields {
-  firstName: string; lastName: string; email: string; phone?: string;
-  dateOfBirth: string; gender: 'MALE' | 'FEMALE' | 'OTHER';
-  weight: number; height: number;
+  firstName: string;
+  lastName: string;
+  email: string;
+  phone?: string;
+  gender: 'MALE' | 'FEMALE' | 'OTHER';
+  weight: number;
+  height: number;
   goalType: 'WEIGHT_LOSS' | 'MUSCLE_GAIN' | 'MAINTENANCE' | 'STRENGTH' | 'ENDURANCE';
 }
 
 interface PaymentFields {
   method: 'CREDIT_CARD' | 'DEBIT_CARD' | 'SINPE_MOVIL' | 'CASH';
-  amount: number;
 }
 
 export function ClientFullForm({ onSuccess, onCancel }: Props) {
-  const [step, setStep]               = useState<Step>('client');
-  const [clientData, setClientData]   = useState<ClientFields | null>(null);
+  const [step, setStep]                 = useState<Step>('client');
+  const [clientData, setClientData]     = useState<ClientFields & { dateOfBirth: string } | null>(null);
   const [selectedPlan, setSelectedPlan] = useState<MembershipPlan | null>(null);
-  const [startDate, setStartDate]     = useState(new Date().toISOString().split('T')[0]);
-  const [planError, setPlanError]     = useState(false);
+  const [startDate, setStartDate]       = useState(new Date().toISOString().split('T')[0]);
+  const [planError, setPlanError]       = useState(false);
+  const [dob, setDob]                   = useState<Date | null>(null);
+  const [dobError, setDobError]         = useState(false);
 
   const stepIndex = STEPS.findIndex(s => s.key === step);
 
@@ -85,7 +92,7 @@ export function ClientFullForm({ onSuccess, onCancel }: Props) {
         },
         payment: {
           method: payment.method,
-          amount: Number(payment.amount),
+          amount: Number(selectedPlan.price),
         },
       });
     },
@@ -93,33 +100,34 @@ export function ClientFullForm({ onSuccess, onCancel }: Props) {
   });
 
   const handleClientNext = (data: ClientFields) => {
-    setClientData(data);
+    if (!dob) { setDobError(true); return; }
+    setDobError(false);
+    setClientData({ ...data, dateOfBirth: dob.toISOString() });
     setStep('membership');
   };
 
   const handleMembershipNext = () => {
     if (!selectedPlan) { setPlanError(true); return; }
     setPlanError(false);
-    paymentForm.setValue('amount', Number(selectedPlan.price));
     setStep('payment');
   };
 
   return (
     <div className="space-y-6 p-6">
       {/* Stepper */}
-      <div className="flex items-center gap-2">
+      <div className="flex items-center w-full">
         {STEPS.map((s, i) => (
-          <div key={s.key} className="flex items-center gap-2">
-            <div className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium transition-colors ${
-              i < stepIndex   ? 'bg-green-100 text-green-700' :
-              i === stepIndex ? 'bg-primary text-white' :
-                                'bg-gray-100 text-gray-400'
+          <div key={s.key} className="flex items-center flex-1">
+            <div className={`flex items-center justify-center gap-2 flex-1 py-2 rounded-full text-sm font-medium transition-colors ${
+              i < stepIndex   ? 'bg-green-100 text-green-800' :
+              i === stepIndex ? 'bg-dark text-white' :
+                                'bg-gray-100 text-gray-500'
             }`}>
-              {i < stepIndex ? <CheckCircle2 size={13} /> : s.icon}
+              {i < stepIndex ? <CheckCircle2 size={15} /> : s.icon}
               {s.label}
             </div>
             {i < STEPS.length - 1 && (
-              <div className={`h-px w-6 ${i < stepIndex ? 'bg-green-300' : 'bg-gray-200'}`} />
+              <div className={`w-4 h-px mx-1 shrink-0 ${i < stepIndex ? 'bg-green-300' : 'bg-gray-200'}`} />
             )}
           </div>
         ))}
@@ -153,13 +161,19 @@ export function ClientFullForm({ onSuccess, onCancel }: Props) {
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-1">
               <Label>Fecha de nacimiento</Label>
-              <Input type="date" max={maxDateOfBirth()}
-                {...clientForm.register('dateOfBirth', {
-                  required: 'Requerido',
-                  validate: v => new Date(v) <= new Date(maxDateOfBirth()) || 'Edad mínima 15 años',
-                })}
+              <DatePicker
+                selected={dob}
+                onChange={(date) => { setDob(date); setDobError(false); }}
+                maxDate={maxDateOfBirth()}
+                showYearDropdown
+                showMonthDropdown
+                dropdownMode="select"
+                dateFormat="dd/MM/yyyy"
+                placeholderText="dd/mm/aaaa"
+                className="w-full h-12 px-4 rounded-lg border border-gray-200 text-sm text-dark bg-white focus:outline-none focus:ring-2 focus:ring-primary"
+                wrapperClassName="w-full"
               />
-              {clientForm.formState.errors.dateOfBirth && <p className="text-xs text-red-500">{clientForm.formState.errors.dateOfBirth.message}</p>}
+              {dobError && <p className="text-xs text-red-500">Requerido</p>}
             </div>
             <div className="space-y-1">
               <Label>Género</Label>
@@ -197,12 +211,18 @@ export function ClientFullForm({ onSuccess, onCancel }: Props) {
         </form>
       )}
 
-      {/* Step 2: Membership plan */}
+      {/* Step 2: Membership */}
       {step === 'membership' && (
         <div className="space-y-4">
           <div className="space-y-1">
             <Label>Fecha de inicio</Label>
-            <Input type="date" value={startDate} onChange={e => setStartDate(e.target.value)} />
+            <DatePicker
+              selected={new Date(startDate)}
+              onChange={(date) => date && setStartDate(date.toISOString().split('T')[0])}
+              dateFormat="dd/MM/yyyy"
+              className="w-full h-12 px-4 rounded-lg border border-gray-200 text-sm text-dark bg-white focus:outline-none focus:ring-2 focus:ring-primary"
+              wrapperClassName="w-full"
+            />
           </div>
           <div className="space-y-1">
             <Label>Selecciona un plan</Label>
@@ -211,7 +231,7 @@ export function ClientFullForm({ onSuccess, onCancel }: Props) {
           </div>
           {plans.length === 0 && (
             <p className="text-xs text-amber-600 bg-amber-50 p-3 rounded-lg">
-              No hay planes creados. Ve a la sección Membresías → Planes para crear uno primero.
+              No hay planes creados. Ve a la sección Membresías para crear uno primero.
             </p>
           )}
           <div className="flex justify-end gap-3 pt-2">
@@ -225,9 +245,12 @@ export function ClientFullForm({ onSuccess, onCancel }: Props) {
       {step === 'payment' && (
         <form onSubmit={paymentForm.handleSubmit(d => mutation.mutate(d))} className="space-y-4">
           {selectedPlan && (
-            <div className="p-3 bg-bone rounded-xl text-sm">
-              <p className="font-medium text-dark">{selectedPlan.name}</p>
-              <p className="text-gray-500 text-xs">{selectedPlan.description}</p>
+            <div className="p-4 bg-dark rounded-xl flex items-center justify-between">
+              <div>
+                <p className="font-semibold text-white">{selectedPlan.name}</p>
+                {selectedPlan.description && <p className="text-gray-300 text-xs mt-0.5">{selectedPlan.description}</p>}
+              </div>
+              <p className="text-2xl font-bold text-primary">₡{Number(selectedPlan.price).toLocaleString('es-CR')}</p>
             </div>
           )}
           <div className="space-y-1">
@@ -241,7 +264,9 @@ export function ClientFullForm({ onSuccess, onCancel }: Props) {
           </div>
           <div className="space-y-1">
             <Label>Monto a cobrar</Label>
-            <Input type="number" step="0.01" {...paymentForm.register('amount', { required: true, min: 0, valueAsNumber: true })} />
+            <div className="h-12 px-4 flex items-center rounded-lg border border-gray-100 bg-bone text-sm font-semibold text-dark">
+              ₡{selectedPlan ? Number(selectedPlan.price).toLocaleString('es-CR') : '0'}
+            </div>
           </div>
           {mutation.isError && (
             <p className="text-sm text-red-500">

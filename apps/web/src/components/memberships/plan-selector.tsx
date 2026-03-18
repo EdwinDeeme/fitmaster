@@ -4,11 +4,10 @@ import { useState } from 'react';
 import { MembershipPlan } from '@/services/membership-plans.service';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
-import { Select } from '@/components/ui/select';
 import { CheckCircle2 } from 'lucide-react';
 
 const typeLabels: Record<string, string> = { MONTHLY: 'Mensual', QUARTERLY: 'Trimestral', ANNUAL: 'Anual' };
-const typeVariant: Record<string, any> = { MONTHLY: 'secondary', QUARTERLY: 'warning', ANNUAL: 'success' };
+const typeVariant: Record<string, any>   = { MONTHLY: 'secondary', QUARTERLY: 'warning', ANNUAL: 'success' };
 
 interface Props {
   plans: MembershipPlan[];
@@ -17,7 +16,7 @@ interface Props {
 }
 
 export function PlanSelector({ plans, selected, onSelect }: Props) {
-  const [search, setSearch] = useState('');
+  const [search, setSearch]       = useState('');
   const [typeFilter, setTypeFilter] = useState('');
 
   const filtered = plans.filter(p => {
@@ -28,6 +27,7 @@ export function PlanSelector({ plans, selected, onSelect }: Props) {
 
   return (
     <div className="space-y-3">
+      {/* Filters */}
       <div className="flex gap-2">
         <Input
           placeholder="Buscar plan..."
@@ -35,18 +35,27 @@ export function PlanSelector({ plans, selected, onSelect }: Props) {
           onChange={e => setSearch(e.target.value)}
           className="flex-1"
         />
-        <Select value={typeFilter} onChange={e => setTypeFilter(e.target.value)} className="w-36">
-          <option value="">Todos</option>
-          <option value="MONTHLY">Mensual</option>
-          <option value="QUARTERLY">Trimestral</option>
-          <option value="ANNUAL">Anual</option>
-        </Select>
+        <div className="flex gap-1 bg-bone p-1 rounded-lg shrink-0">
+          {[['', 'Todos'], ['MONTHLY', 'Mensual'], ['QUARTERLY', 'Trimestral'], ['ANNUAL', 'Anual']].map(([val, label]) => (
+            <button
+              key={val}
+              type="button"
+              onClick={() => setTypeFilter(val)}
+              className={`px-2.5 py-1 rounded-md text-xs font-medium transition-colors whitespace-nowrap ${
+                typeFilter === val ? 'bg-white shadow-sm text-dark' : 'text-gray-500 hover:text-dark'
+              }`}
+            >
+              {label}
+            </button>
+          ))}
+        </div>
       </div>
 
+      {/* Plans list */}
       {filtered.length === 0 ? (
         <p className="text-sm text-gray-400 text-center py-4">No hay planes disponibles</p>
       ) : (
-        <div className="grid gap-2 max-h-64 overflow-y-auto pr-1">
+        <div className="grid grid-cols-1 gap-2 max-h-56 overflow-y-auto pr-1">
           {filtered.map(plan => (
             <button
               key={plan.id}
@@ -58,16 +67,18 @@ export function PlanSelector({ plans, selected, onSelect }: Props) {
                   : 'border-gray-100 hover:border-gray-200 bg-white'
               }`}
             >
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2">
+              <div className="flex items-center justify-between gap-2">
+                <div className="flex items-center gap-2 min-w-0">
                   {selected?.id === plan.id && <CheckCircle2 size={15} className="text-primary shrink-0" />}
-                  <span className="font-medium text-dark text-sm">{plan.name}</span>
+                  <span className="font-medium text-dark text-sm truncate">{plan.name}</span>
                   <Badge variant={typeVariant[plan.type]}>{typeLabels[plan.type]}</Badge>
                 </div>
-                <span className="font-semibold text-dark text-sm">₡{Number(plan.price).toLocaleString('es-CR')}</span>
+                <span className="font-semibold text-dark text-sm shrink-0">
+                  ₡{Number(plan.price).toLocaleString('es-CR')}
+                </span>
               </div>
               {plan.description && (
-                <p className="text-xs text-gray-500 mt-1 ml-0">{plan.description}</p>
+                <p className="text-xs text-gray-500 mt-1 ml-0 truncate">{plan.description}</p>
               )}
             </button>
           ))}

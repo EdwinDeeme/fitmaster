@@ -106,6 +106,7 @@ model Client {
   // Relations
   gym                Gym                  @relation(fields: [gymId], references: [id], onDelete: Cascade)
   memberships        Membership[]
+  payments           Payment[]
   physicalProgress   PhysicalProgress[]
   progressPhotos     ProgressPhoto[]
   routineAssignments RoutineAssignment[]
@@ -241,8 +242,8 @@ enum MembershipStatus {
 model Payment {
   id                    String        @id @default(uuid())
   gymId                 String        @map("gym_id")
-  clientId              String        @map("client_id")
-  membershipId          String        @map("membership_id")
+  clientId              String?       @map("client_id")
+  membershipId          String?       @map("membership_id")
   amount                Decimal       @db.Decimal(10, 2)
   currency              String        @default("CRC")
   method                PaymentMethod
@@ -254,7 +255,8 @@ model Payment {
 
   // Relations
   gym        Gym        @relation(fields: [gymId], references: [id], onDelete: Cascade)
-  membership Membership @relation(fields: [membershipId], references: [id], onDelete: Cascade)
+  client     Client?    @relation(fields: [clientId], references: [id], onDelete: SetNull)
+  membership Membership? @relation(fields: [membershipId], references: [id], onDelete: Cascade)
 
   @@index([gymId, clientId, createdAt])
   @@map("payments")
