@@ -1,51 +1,113 @@
-import { Controller, Get, Post, Body, Patch, Param, Delete, UseGuards } from '@nestjs/common';
+import {
+  Controller,
+  Get,
+  Post,
+  Put,
+  Delete,
+  Body,
+  Param,
+  Query,
+  HttpCode,
+  HttpStatus,
+} from '@nestjs/common';
+import { ApiTags, ApiBearerAuth, ApiOperation } from '@nestjs/swagger';
 import { RoutinesService } from './routines.service';
-import { CreateRoutineDto, AssignRoutineDto } from './dto';
+import { CreateRoutineDto, UpdateRoutineDto, AssignRoutineDto } from './dto';
 import { Roles } from '../auth/decorators/roles.decorator';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
-import { TokenPayload } from '../auth/interfaces';
-import { UserRole } from '@prisma/client';
-import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
-import { RolesGuard } from '../auth/guards/roles.guard';
 
+@ApiTags('routines')
+@ApiBearerAuth()
 @Controller('routines')
-@UseGuards(JwtAuthGuard, RolesGuard)
 export class RoutinesController {
   constructor(private readonly routinesService: RoutinesService) {}
 
   @Post()
-  @Roles(UserRole.GYM_ADMIN, UserRole.TRAINER)
-  create(@CurrentUser() user: TokenPayload, @Body() dto: CreateRoutineDto) {
-    return this.routinesService.create(user.gymId!, user.userId, dto);
+  @Roles('GYM_ADMIN', 'TRAINER')
+  @ApiOperation({ summary: 'Create a routine' })
+  create(
+    @CurrentUser() user: any,
+    @Body() dto: CreateRoutineDto,
+  ) {
+    return this.routinesService.create(user.gymId, user.userId, dto);
   }
 
   @Get()
-  @Roles(UserRole.GYM_ADMIN, UserRole.TRAINER)
-  findAll(@CurrentUser() user: TokenPayload) {
-    return this.routinesService.findAll(user.gymId!);
+  @Roles('GYM_ADMIN', 'TRAINER', 'RECEPTIONIST')
+  @ApiOperation({ summary: 'List all routines for the gym' })
+  findAll(
+    @CurrentUser() user: any,
+    @Query('difficulty') difficulty?: string,
+    @Query('targetGoal') targetGoal?: string,
+    @Query('search') search?: string,
+  ) {
+    return this.routinesService.findAll(user.gymId, { difficulty, targetGoal, search });
   }
 
   @Get(':id')
-  @Roles(UserRole.GYM_ADMIN, UserRole.TRAINER)
-  findOne(@CurrentUser() user: TokenPayload, @Param('id') id: string) {
-    return this.routinesService.findOne(user.gymId!, id);
+  @Roles('GYM_ADMIN', 'TRAINER', 'RECEPTIONIST')
+  @ApiOperation({ summary: 'Get a routine by id' })
+  findOne(@CurrentUser() user: any, @Param('id') id: string) {
+    return this.routinesService.findOne(user.gymId, id);
   }
 
-  @Patch(':id')
-  @Roles(UserRole.GYM_ADMIN, UserRole.TRAINER)
-  update(@CurrentUser() user: TokenPayload, @Param('id') id: string, @Body() dto: Partial<CreateRoutineDto>) {
-    return this.routinesService.update(user.gymId!, id, dto);
+  @Put(':id')
+  @Roles('GYM_ADMIN', 'TRAINER')
+  @ApiOperation({ summary: 'Update a routine' })
+  update(
+    @CurrentUser() user: any,
+    @Param('id') id: string,
+    @Body() dto: UpdateRoutineDto,
+  ) {
+    return this.routinesService.update(user.gymId, id, dto);
   }
 
   @Delete(':id')
-  @Roles(UserRole.GYM_ADMIN)
-  remove(@CurrentUser() user: TokenPayload, @Param('id') id: string) {
-    return this.routinesService.remove(user.gymId!, id);
+  @Roles('GYM_ADMIN', 'TRAINER')
+  @HttpCode(HttpStatus.NO_CONTENT)
+  @ApiOperation({ summary: 'Delete a routine' })
+  remove(@CurrentUser() user: any, @Param('id') id: string) {
+    return this.routinesService.remove(user.gymId, id);
   }
 
-  @Post('assign')
-  @Roles(UserRole.GYM_ADMIN, UserRole.TRAINER)
-  assign(@CurrentUser() user: TokenPayload, @Body() dto: AssignRoutineDto) {
-    return this.routinesService.assign(user.gymId!, dto);
+  @Post(':id/assign')
+  @Roles('GYM_ADMIN', 'TRAINER')
+  @ApiOperation({ summary: 'Assign routine to a client' })
+  assign(
+    @CurrentUser() user: any,
+    @Param('id') id: string,
+    @Body() dto: AssignRoutineDto,
+  ) {
+    return this.routinesService.assign(user.gymId, id, dto);
+  }
+
+  @Delete('assignments/:assignmentId')
+  @Roles('GYM_ADMIN', 'TRAINER')
+  @HttpCode(HttpStatus.NO_CONTENT)
+  @ApiOperation({ summary: 'Unassign a routine from a client' })
+  unassign(@CurrentUser() user: any, @Param('assignmentId') assignmentId: string) {
+    return this.routinesService.unassign(user.gymId, assignmentId);
+  }
+
+  @Get('client/:clientId')
+  @Roles('GYM_ADMIN', 'TRAINER', 'RECEPTIONIST')
+  @ApiOperation({ summary: 'Get active routine for a client' })
+  getClientRoutine(@CurrentUser() user: any, @Param('clientId') clientId: string) {
+    return this.routinesService.getClientRoutine(user.gymId, clientId);
+  }
+
+  @Get('recent')
+  @Roles('GYM_ADMIN', 'TRAINER', 'RECEPTIONIST')
+  @ApiOperation({ summary: 'Get recent routines' })
+  getRecentRoutines(
+    @CurrentUser() user: any,
+    @Query('limit') limit?: string,
+  ) {
+    const userId = user.role === 'TRAINER' ? user.userId : undefined;
+    return this.routinesService.getRecentRoutines(
+      user.gymId, 
+      userId, 
+      limit ? parseInt(limit) : 5
+    );
   }
 }

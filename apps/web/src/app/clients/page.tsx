@@ -13,6 +13,7 @@ import { UserRole } from '@/types/auth';
 import { Client } from '@/types/gym';
 import { Plus, Search, Eye, Edit2, Trash2, Users } from 'lucide-react';
 import { ClientForm } from '@/components/clients/client-form';
+import { ClientFullForm } from '@/components/clients/client-full-form';
 import { ClientDetail } from '@/components/clients/client-detail';
 
 export default function ClientsPage() {
@@ -124,7 +125,7 @@ export default function ClientsPage() {
 
         {/* Modals */}
         <Modal open={showCreate} onClose={() => setShowCreate(false)} title="Nuevo Cliente" size="lg">
-          <ClientForm onSuccess={() => { setShowCreate(false); qc.invalidateQueries({ queryKey: ['clients'] }); }} onCancel={() => setShowCreate(false)} />
+          <ClientFullForm onSuccess={() => { setShowCreate(false); qc.invalidateQueries({ queryKey: ['clients'] }); }} onCancel={() => setShowCreate(false)} />
         </Modal>
 
         <Modal open={!!editClient} onClose={() => setEditClient(null)} title="Editar Cliente" size="lg">

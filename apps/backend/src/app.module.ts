@@ -5,6 +5,7 @@ import { APP_GUARD, Reflector } from '@nestjs/core';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
 import { PrismaModule } from './prisma/prisma.module';
+import { CacheModule } from './cache/cache.module';
 import { AuthModule } from './auth/auth.module';
 import { JwtAuthGuard } from './auth/guards/jwt-auth.guard';
 import { RolesGuard } from './auth/guards/roles.guard';
@@ -13,12 +14,13 @@ import { GymsModule } from './gyms/gyms.module';
 import { PlansModule } from './plans/plans.module';
 import { DashboardService } from './dashboard/dashboard.service';
 import { DashboardModule } from './dashboard/dashboard.module';
+import { RoutinesModule } from './routines/routines.module';
 import { ClientsModule } from './clients/clients.module';
 import { MembershipsModule } from './memberships/memberships.module';
 import { FinancesModule } from './finances/finances.module';
-import { RoutinesModule } from './routines/routines.module';
 import { EquipmentModule } from './equipment/equipment.module';
 import { StaffModule } from './staff/staff.module';
+import { MembershipPlansModule } from './membership-plans/membership-plans.module';
 
 @Module({
   imports: [
@@ -30,6 +32,9 @@ import { StaffModule } from './staff/staff.module';
 
     // Prisma
     PrismaModule,
+
+    // Cache
+    CacheModule,
 
     // Rate limiting
     ThrottlerModule.forRoot([
@@ -46,12 +51,14 @@ import { StaffModule } from './staff/staff.module';
     GymsModule,
     PlansModule,
     DashboardModule,
+    RoutinesModule,
     ClientsModule,
     MembershipsModule,
     FinancesModule,
     RoutinesModule,
     EquipmentModule,
     StaffModule,
+    MembershipPlansModule,
   ],
   controllers: [AppController],
   providers: [

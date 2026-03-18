@@ -1,28 +1,53 @@
 import { api } from '@/lib/api';
-import { Routine } from '@/types/gym';
+import { Routine, CreateRoutineData, AssignRoutineData } from '@/types/routines';
+
+export interface RoutineFilters {
+  difficulty?: string;
+  targetGoal?: string;
+  search?: string;
+}
 
 export const routinesService = {
-  getAll: async (): Promise<Routine[]> => {
-    const { data } = await api.get('/routines');
-    return data;
+  getAll: async (filters?: RoutineFilters): Promise<Routine[]> => {
+    const response = await api.get('/routines', { params: filters });
+    return response.data;
   },
-  getOne: async (id: string): Promise<Routine> => {
-    const { data } = await api.get(`/routines/${id}`);
-    return data;
+
+  getById: async (id: string): Promise<Routine> => {
+    const response = await api.get(`/routines/${id}`);
+    return response.data;
   },
-  create: async (dto: any): Promise<Routine> => {
-    const { data } = await api.post('/routines', dto);
-    return data;
+
+  create: async (data: CreateRoutineData): Promise<Routine> => {
+    const response = await api.post('/routines', data);
+    return response.data;
   },
-  update: async (id: string, dto: any): Promise<Routine> => {
-    const { data } = await api.patch(`/routines/${id}`, dto);
-    return data;
+
+  update: async (id: string, data: Partial<CreateRoutineData>): Promise<Routine> => {
+    const response = await api.put(`/routines/${id}`, data);
+    return response.data;
   },
-  delete: async (id: string): Promise<void> => {
+
+  remove: async (id: string): Promise<void> => {
     await api.delete(`/routines/${id}`);
   },
-  assign: async (dto: { clientId: string; routineId: string; startDate: string }) => {
-    const { data } = await api.post('/routines/assign', dto);
-    return data;
+
+  assign: async (routineId: string, data: AssignRoutineData) => {
+    const response = await api.post(`/routines/${routineId}/assign`, data);
+    return response.data;
+  },
+
+  unassign: async (assignmentId: string): Promise<void> => {
+    await api.delete(`/routines/assignments/${assignmentId}`);
+  },
+
+  getClientRoutine: async (clientId: string): Promise<Routine | null> => {
+    const response = await api.get(`/routines/client/${clientId}`);
+    return response.data;
+  },
+
+  getRecent: async (limit = 5): Promise<Routine[]> => {
+    const response = await api.get('/routines/recent', { params: { limit } });
+    return response.data;
   },
 };

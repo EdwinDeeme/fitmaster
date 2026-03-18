@@ -20,6 +20,7 @@ import {
 } from 'lucide-react';
 import { useQuery } from '@tanstack/react-query';
 import { dashboardService } from '@/services/dashboard.service';
+import { RecentRoutines } from '@/components/routines/recent-routines';
 
 export default function DashboardPage() {
   const { user } = useAuth();
@@ -255,21 +256,7 @@ export default function DashboardPage() {
                 </div>
               </CardHeader>
               <CardContent className="pt-6">
-                <div className="flex flex-col items-center justify-center py-8 text-center">
-                  <div className="p-4 bg-bone rounded-full mb-4">
-                    <Activity className="h-8 w-8 text-gray-400" />
-                  </div>
-                  <p className="text-sm text-gray-500">
-                    {user?.role === UserRole.TRAINER 
-                      ? 'No hay rutinas recientes'
-                      : 'No hay actividad reciente'}
-                  </p>
-                  <p className="text-xs text-gray-400 mt-1">
-                    {user?.role === UserRole.TRAINER
-                      ? 'Las rutinas creadas aparecerán aquí'
-                      : 'Las acciones aparecerán aquí'}
-                  </p>
-                </div>
+                <RecentRoutines limit={5} />
               </CardContent>
             </Card>
 
