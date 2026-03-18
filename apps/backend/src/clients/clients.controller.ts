@@ -1,6 +1,6 @@
 import { Controller, Get, Post, Body, Patch, Param, Delete, UseGuards } from '@nestjs/common';
 import { ClientsService } from './clients.service';
-import { CreateClientDto, UpdateClientDto } from './dto';
+import { CreateClientDto, UpdateClientDto, CreateClientFullDto } from './dto';
 import { Roles } from '../auth/decorators/roles.decorator';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
 import { TokenPayload } from '../auth/interfaces';
@@ -17,6 +17,12 @@ export class ClientsController {
   @Roles(UserRole.GYM_ADMIN, UserRole.RECEPTIONIST)
   create(@CurrentUser() user: TokenPayload, @Body() dto: CreateClientDto) {
     return this.clientsService.create(user.gymId!, dto);
+  }
+
+  @Post('with-membership')
+  @Roles(UserRole.GYM_ADMIN, UserRole.RECEPTIONIST)
+  createFull(@CurrentUser() user: TokenPayload, @Body() dto: CreateClientFullDto) {
+    return this.clientsService.createFull(user.gymId!, dto);
   }
 
   @Get()

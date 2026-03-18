@@ -38,6 +38,7 @@ model Gym {
   maintenanceRecords MaintenanceRecord[]
   subscription       Subscription?
   expenses           Expense[]
+  membershipPlans    MembershipPlan[]
 
   @@map("gyms")
 }
@@ -174,6 +175,27 @@ enum PhotoType {
   FRONT
   SIDE
   BACK
+}
+
+// ============================================
+// MEMBERSHIP PLANS (templates)
+// ============================================
+
+model MembershipPlan {
+  id          String         @id @default(uuid())
+  gymId       String         @map("gym_id")
+  name        String
+  description String?
+  type        MembershipType
+  price       Decimal        @db.Decimal(10, 2)
+  isActive    Boolean        @default(true) @map("is_active")
+  createdAt   DateTime       @default(now()) @map("created_at")
+  updatedAt   DateTime       @updatedAt @map("updated_at")
+
+  gym Gym @relation(fields: [gymId], references: [id], onDelete: Cascade)
+
+  @@index([gymId, isActive])
+  @@map("membership_plans")
 }
 
 // ============================================
