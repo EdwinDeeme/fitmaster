@@ -15,6 +15,11 @@ import { PlansModule } from './plans/plans.module';
 import { DashboardService } from './dashboard/dashboard.service';
 import { DashboardModule } from './dashboard/dashboard.module';
 import { RoutinesModule } from './routines/routines.module';
+import { ClientsModule } from './clients/clients.module';
+import { MembershipsModule } from './memberships/memberships.module';
+import { FinancesModule } from './finances/finances.module';
+import { EquipmentModule } from './equipment/equipment.module';
+import { StaffModule } from './staff/staff.module';
 
 @Module({
   imports: [
@@ -46,6 +51,12 @@ import { RoutinesModule } from './routines/routines.module';
     PlansModule,
     DashboardModule,
     RoutinesModule,
+    ClientsModule,
+    MembershipsModule,
+    FinancesModule,
+    RoutinesModule,
+    EquipmentModule,
+    StaffModule,
   ],
   controllers: [AppController],
   providers: [

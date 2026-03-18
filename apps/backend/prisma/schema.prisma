@@ -37,6 +37,7 @@ model Gym {
   progressPhotos     ProgressPhoto[]
   maintenanceRecords MaintenanceRecord[]
   subscription       Subscription?
+  expenses           Expense[]
 
   @@map("gyms")
 }
@@ -500,5 +501,38 @@ enum InvoiceStatus {
   OVERDUE
   VOID
   REFUNDED
+}
+
+// ============================================
+// EXPENSES (EGRESOS)
+// ============================================
+
+model Expense {
+  id          String          @id @default(uuid())
+  gymId       String          @map("gym_id")
+  description String
+  amount      Decimal         @db.Decimal(10, 2)
+  currency    String          @default("CRC")
+  category    ExpenseCategory
+  date        DateTime
+  notes       String?
+  createdAt   DateTime        @default(now()) @map("created_at")
+  updatedAt   DateTime        @updatedAt @map("updated_at")
+
+  gym Gym @relation(fields: [gymId], references: [id], onDelete: Cascade)
+
+  @@index([gymId, date])
+  @@map("expenses")
+}
+
+enum ExpenseCategory {
+  RENT
+  UTILITIES
+  EQUIPMENT
+  SALARIES
+  MAINTENANCE
+  MARKETING
+  SUPPLIES
+  OTHER
 }
 
