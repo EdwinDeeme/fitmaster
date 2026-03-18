@@ -1,6 +1,6 @@
 import { Injectable, NotFoundException, ConflictException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
-import { CreateClientDto, UpdateClientDto } from './dto';
+import { CreateClientDto, UpdateClientDto, CreateClientFullDto } from './dto';
 
 @Injectable()
 export class ClientsService {
@@ -86,5 +86,86 @@ export class ClientsService {
   async remove(gymId: string, id: string) {
     await this.findOne(gymId, id);
     return this.prisma.client.delete({ where: { id } });
+  }
+
+  async createFull(gymId: string, dto: CreateClientFullDto) {
+    const existing = await this.prisma.client.findUnique({
+      where: { gymId_email: { gymId, email: dto.email } },
+    });
+    if (existing) throw new ConflictException('Ya existe un cliente con ese email en este gimnasio');
+
+    const h = dto.height / 100;
+    const bmi = parseFloat((dto.weight / (h * h)).toFixed(2));
+
+    return this.prisma.$transaction(async (tx) => {
+      // 1. Create client
+      const client = await tx.client.create({
+        data: {
+          gymId,
+          firstName: dto.firstName,
+          lastName: dto.lastName,
+          email: dto.email,
+          phone: dto.phone,
+          dateOfBirth: new Date(dto.dateOfBirth),
+          gender: dto.gender,
+          weight: dto.weight,
+          height: dto.height,
+          bmi,
+          bodyFatPercentage: dto.bodyFatPercentage,
+          goalType: dto.goalType,
+          targetWeight: dto.targetWeight,
+          targetDate: dto.targetDate ? new Date(dto.targetDate) : undefined,
+        },
+      });
+
+      if (!dto.membership) return { client };
+
+      // 2. Apply promotion if any
+      let finalPrice = dto.membership.price;
+      if (dto.membership.promotionCode) {
+        const promo = await tx.promotion.findFirst({
+          where: { gymId, code: dto.membership.promotionCode, isActive: true, endDate: { gte: new Date() } },
+        });
+        if (promo) {
+          finalPrice = promo.discountType === 'PERCENTAGE'
+            ? finalPrice * (1 - Number(promo.discountValue) / 100)
+            : Math.max(0, finalPrice - Number(promo.discountValue));
+          await tx.promotion.update({ where: { id: promo.id }, data: { currentUses: { increment: 1 } } });
+        }
+      }
+
+      // 3. Create membership
+      const membership = await tx.membership.create({
+        data: {
+          gymId,
+          clientId: client.id,
+          type: dto.membership.type,
+          startDate: new Date(dto.membership.startDate),
+          endDate: new Date(dto.membership.endDate),
+          price: finalPrice,
+          autoRenew: dto.membership.autoRenew ?? false,
+          status: 'ACTIVE',
+        },
+      });
+
+      if (!dto.payment) return { client, membership };
+
+      // 4. Create payment
+      const payment = await tx.payment.create({
+        data: {
+          gymId,
+          clientId: client.id,
+          membershipId: membership.id,
+          amount: dto.payment.amount,
+          currency: dto.payment.currency ?? 'CRC',
+          method: dto.payment.method,
+          status: 'COMPLETED',
+          sinpeReference: dto.payment.sinpeReference,
+          metadata: dto.payment.notes ? { notes: dto.payment.notes } : undefined,
+        },
+      });
+
+      return { client, membership, payment };
+    });
   }
 }

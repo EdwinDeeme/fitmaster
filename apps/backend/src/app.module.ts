@@ -19,6 +19,7 @@ import { FinancesModule } from './finances/finances.module';
 import { RoutinesModule } from './routines/routines.module';
 import { EquipmentModule } from './equipment/equipment.module';
 import { StaffModule } from './staff/staff.module';
+import { MembershipPlansModule } from './membership-plans/membership-plans.module';
 
 @Module({
   imports: [
@@ -52,6 +53,7 @@ import { StaffModule } from './staff/staff.module';
     RoutinesModule,
     EquipmentModule,
     StaffModule,
+    MembershipPlansModule,
   ],
   controllers: [AppController],
   providers: [

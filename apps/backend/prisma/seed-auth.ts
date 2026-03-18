@@ -3,10 +3,36 @@ import * as bcrypt from 'bcrypt';
 
 const prisma = new PrismaClient();
 
+async function upsertUser(data: {
+  email: string;
+  gymId: string | null;
+  role: UserRole;
+  firstName: string;
+  lastName: string;
+  passwordHash: string;
+}) {
+  const existing = await prisma.user.findFirst({ where: { email: data.email } });
+  if (existing) return existing;
+  await prisma.$executeRaw`
+    INSERT INTO users (id, gym_id, email, password_hash, role, first_name, last_name, created_at, updated_at)
+    VALUES (
+      gen_random_uuid(),
+      ${data.gymId}::uuid,
+      ${data.email},
+      ${data.passwordHash},
+      ${data.role}::"UserRole",
+      ${data.firstName},
+      ${data.lastName},
+      NOW(),
+      NOW()
+    )
+  `;
+  return prisma.user.findFirst({ where: { email: data.email } });
+}
+
 async function seedAuth() {
   console.log('🌱 Seeding authentication data...');
 
-  // Create test gym
   const gym = await prisma.gym.upsert({
     where: { subdomain: 'testgym' },
     update: {},
@@ -18,86 +44,23 @@ async function seedAuth() {
     },
   });
 
-  console.log(`✅ Created gym: ${gym.name} (${gym.id})`);
+  console.log(`✅ Gym: ${gym.name} (${gym.id})`);
 
-  // Create test users
-  const password = await bcrypt.hash('SecurePass123!', 12);
+  const passwordHash = await bcrypt.hash('SecurePass123!', 12);
 
-  // SUPER_ADMIN - No tiene gymId porque administra toda la plataforma
-  const superAdmin = await prisma.user.upsert({
-    where: {
-      email: 'superadmin@fitmaster.com',
-    },
-    update: {},
-    create: {
-      gymId: null, // SUPER_ADMIN no pertenece a ningún gimnasio
-      email: 'superadmin@fitmaster.com',
-      passwordHash: password,
-      role: UserRole.SUPER_ADMIN,
-      firstName: 'Super',
-      lastName: 'Admin',
-    },
-  });
+  const superAdmin = await upsertUser({ email: 'superadmin@fitmaster.com', gymId: null, role: UserRole.SUPER_ADMIN, firstName: 'Super', lastName: 'Admin', passwordHash });
+  const gymAdmin   = await upsertUser({ email: 'admin@testgym.com',        gymId: gym.id, role: UserRole.GYM_ADMIN,   firstName: 'Gym',   lastName: 'Admin',        passwordHash });
+  const trainer    = await upsertUser({ email: 'trainer@testgym.com',      gymId: gym.id, role: UserRole.TRAINER,     firstName: 'John',  lastName: 'Trainer',      passwordHash });
+  const receptionist = await upsertUser({ email: 'receptionist@testgym.com', gymId: gym.id, role: UserRole.RECEPTIONIST, firstName: 'Jane', lastName: 'Receptionist', passwordHash });
 
-  // Usuarios del gimnasio - Estos SÍ tienen gymId
-  const gymAdmin = await prisma.user.upsert({
-    where: {
-      email: 'admin@testgym.com',
-    },
-    update: {},
-    create: {
-      gymId: gym.id,
-      email: 'admin@testgym.com',
-      passwordHash: password,
-      role: UserRole.GYM_ADMIN,
-      firstName: 'Gym',
-      lastName: 'Admin',
-    },
-  });
-
-  const trainer = await prisma.user.upsert({
-    where: {
-      email: 'trainer@testgym.com',
-    },
-    update: {},
-    create: {
-      gymId: gym.id,
-      email: 'trainer@testgym.com',
-      passwordHash: password,
-      role: UserRole.TRAINER,
-      firstName: 'John',
-      lastName: 'Trainer',
-    },
-  });
-
-  const receptionist = await prisma.user.upsert({
-    where: {
-      email: 'receptionist@testgym.com',
-    },
-    update: {},
-    create: {
-      gymId: gym.id,
-      email: 'receptionist@testgym.com',
-      passwordHash: password,
-      role: UserRole.RECEPTIONIST,
-      firstName: 'Jane',
-      lastName: 'Receptionist',
-    },
-  });
-
-  console.log('✅ Created test users:');
-  console.log(`  - Super Admin: ${superAdmin.email}`);
-  console.log(`  - Gym Admin: ${gymAdmin.email}`);
-  console.log(`  - Trainer: ${trainer.email}`);
-  console.log(`  - Receptionist: ${receptionist.email}`);
-  console.log('\n🔑 All users have password: SecurePass123!');
+  console.log('✅ Users:');
+  console.log(`  - ${superAdmin.role}: ${superAdmin.email}`);
+  console.log(`  - ${gymAdmin.role}: ${gymAdmin.email}`);
+  console.log(`  - ${trainer.role}: ${trainer.email}`);
+  console.log(`  - ${receptionist.role}: ${receptionist.email}`);
+  console.log('\n🔑 Password: SecurePass123!');
 }
 
 seedAuth()
-  .catch((e) => {
-    console.error('❌ Error seeding auth data:', e);
-    process.exit(1);
-  })
-  .finally(async () => {
-    await prisma.$disconnect();
-  });
+  .catch((e) => { console.error('❌ Error:', e); process.exit(1); })
+  .finally(async () => { await prisma.$disconnect(); });
