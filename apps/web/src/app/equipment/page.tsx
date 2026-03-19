@@ -8,97 +8,157 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Modal } from '@/components/ui/modal';
+import { Select } from '@/components/ui/select';
 import { equipmentService } from '@/services/equipment.service';
 import { UserRole } from '@/types/auth';
 import { Equipment } from '@/types/gym';
-import { Plus, Search, Edit2, Trash2, Wrench, Dumbbell, AlertTriangle } from 'lucide-react';
+import { Plus, Search, Trash2, Wrench, Dumbbell, AlertTriangle, X, Pencil, ChevronRight, Tag, Activity, CalendarClock, CalendarCheck, ShoppingCart, RefreshCw, Check } from 'lucide-react';
 import { EquipmentForm } from '@/components/equipment/equipment-form';
 import { MaintenanceForm } from '@/components/equipment/maintenance-form';
+import { useAuth } from '@/contexts/auth.context';
 
 const statusConfig: Record<string, { label: string; variant: any }> = {
-  OPERATIONAL: { label: 'Operativo', variant: 'success' },
-  MAINTENANCE: { label: 'En mantenimiento', variant: 'warning' },
-  DAMAGED: { label: 'Dañado', variant: 'danger' },
-  OUT_OF_SERVICE: { label: 'Fuera de servicio', variant: 'secondary' },
+  OPERATIONAL:    { label: 'Operativo',          variant: 'success'   },
+  MAINTENANCE:    { label: 'En mantenimiento',   variant: 'warning'   },
+  DAMAGED:        { label: 'Dañado',             variant: 'danger'    },
+  OUT_OF_SERVICE: { label: 'Fuera de servicio',  variant: 'secondary' },
 };
-const categoryLabels: Record<string, string> = { CARDIO: 'Cardio', STRENGTH: 'Fuerza', FREE_WEIGHTS: 'Pesas Libres', FUNCTIONAL: 'Funcional', ACCESSORIES: 'Accesorios' };
+const categoryLabels: Record<string, string> = {
+  CARDIO: 'Cardio', STRENGTH: 'Fuerza', FREE_WEIGHTS: 'Pesas Libres',
+  FUNCTIONAL: 'Funcional', ACCESSORIES: 'Accesorios',
+};
+const maintenanceTypeLabels: Record<string, string> = {
+  ROUTINE: 'Rutinario', REPAIR: 'Reparación', REPLACEMENT: 'Reemplazo',
+};
 
 export default function EquipmentPage() {
+  const { user } = useAuth();
   const qc = useQueryClient();
-  const [search, setSearch] = useState('');
-  const [showCreate, setShowCreate] = useState(false);
-  const [editEquipment, setEditEquipment] = useState<Equipment | null>(null);
-  const [maintenanceEquipment, setMaintenanceEquipment] = useState<Equipment | null>(null);
+  const isAdmin = user?.role === UserRole.GYM_ADMIN;
 
-  const { data: equipment = [], isLoading } = useQuery({ queryKey: ['equipment'], queryFn: equipmentService.getAll });
-  const { data: catalog = [] } = useQuery({ queryKey: ['equipment-catalog'], queryFn: equipmentService.getCatalog });
+  const [search, setSearch]           = useState('');
+  const [showCreate, setShowCreate]   = useState(false);
+  const [detailEq, setDetailEq]       = useState<Equipment | null>(null);
+  const [editEq, setEditEq]           = useState<Equipment | null>(null);
+  const [maintenanceEq, setMaintenanceEq] = useState<Equipment | null>(null);
+
+  const { data: equipment = [], isLoading } = useQuery({
+    queryKey: ['equipment'],
+    queryFn: equipmentService.getAll,
+  });
+  const { data: catalog = [] } = useQuery({
+    queryKey: ['equipment-catalog'],
+    queryFn: equipmentService.getCatalog,
+  });
+
+  // Fetch full detail (with all maintenance records) when viewing
+  const { data: detailFull } = useQuery({
+    queryKey: ['equipment', detailEq?.id],
+    queryFn: () => equipmentService.getOne(detailEq!.id),
+    enabled: !!detailEq,
+  });
 
   const deleteMutation = useMutation({
     mutationFn: equipmentService.delete,
-    onSuccess: () => qc.invalidateQueries({ queryKey: ['equipment'] }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['equipment'] });
+      setDetailEq(null);
+    },
   });
 
   const filtered = equipment.filter(e =>
     `${e.name} ${e.brand ?? ''} ${e.category}`.toLowerCase().includes(search.toLowerCase())
   );
-
-  const needsMaintenance = equipment.filter(e => e.nextMaintenance && new Date(e.nextMaintenance) <= new Date());
+  const needsMaintenance = equipment.filter(e =>
+    e.nextMaintenance && new Date(e.nextMaintenance) <= new Date()
+  );
 
   return (
     <ProtectedRoute allowedRoles={[UserRole.GYM_ADMIN, UserRole.TRAINER]}>
       <DashboardLayout>
         <div className="py-6 space-y-6">
+          {/* Header */}
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
-              <div className="p-2 bg-orange-50 rounded-xl"><Dumbbell className="h-6 w-6 text-orange-600" /></div>
-              <div><h1 className="text-2xl font-bold text-dark">Equipamiento</h1><p className="text-sm text-gray-500">{equipment.length} equipos registrados</p></div>
+              <div className="p-2 bg-orange-50 rounded-xl">
+                <Dumbbell className="h-6 w-6 text-orange-600" />
+              </div>
+              <div>
+                <h1 className="text-2xl font-bold text-dark">Equipamiento</h1>
+                <p className="text-sm text-gray-500">{equipment.length} equipos registrados</p>
+              </div>
             </div>
-            <Button onClick={() => setShowCreate(true)} className="flex items-center gap-2"><Plus className="h-4 w-4" />Agregar Equipo</Button>
+            {isAdmin && (
+              <Button onClick={() => setShowCreate(true)} className="flex items-center gap-2">
+                <Plus className="h-4 w-4" /> Agregar Equipo
+              </Button>
+            )}
           </div>
 
+          {/* Maintenance alert */}
           {needsMaintenance.length > 0 && (
             <div className="bg-yellow-50 border border-yellow-200 rounded-xl p-4 flex items-center gap-3">
-              <AlertTriangle className="h-5 w-5 text-yellow-600 flex-shrink-0" />
-              <p className="text-sm text-yellow-800">{needsMaintenance.length} equipo(s) requieren mantenimiento: {needsMaintenance.map(e => e.name).join(', ')}</p>
+              <AlertTriangle className="h-5 w-5 text-yellow-600 shrink-0" />
+              <p className="text-sm text-yellow-800">
+                {needsMaintenance.length} equipo(s) requieren mantenimiento:{' '}
+                {needsMaintenance.map(e => e.name).join(', ')}
+              </p>
             </div>
           )}
 
+          {/* Search */}
           <div className="relative">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
-            <Input placeholder="Buscar equipo..." className="pl-10" value={search} onChange={e => setSearch(e.target.value)} />
+            <Input placeholder="Buscar equipo..." className="pl-10" value={search}
+              onChange={e => setSearch(e.target.value)} />
           </div>
 
+          {/* Table */}
           <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
             <div className="overflow-x-auto">
               <table className="w-full">
                 <thead className="bg-bone border-b border-gray-100">
-                  <tr>{['Equipo', 'Categoría', 'Marca', 'Estado', 'Último Mant.', 'Próximo Mant.', 'Acciones'].map(h => (
-                    <th key={h} className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase">{h}</th>
-                  ))}</tr>
+                  <tr>
+                    <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase">Equipo</th>
+                    <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase hidden sm:table-cell">Categoría</th>
+                    <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase hidden md:table-cell">Marca</th>
+                    <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase">Estado</th>
+                    <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase hidden md:table-cell">Último Mant.</th>
+                    <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase hidden sm:table-cell">Próximo Mant.</th>
+                    <th className="px-4 py-3 text-center text-xs font-semibold text-gray-500 uppercase hidden lg:table-cell">Mantenimientos</th>
+                    <th className="px-4 py-3"></th>
+                  </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-50">
-                  {isLoading ? <tr><td colSpan={7} className="px-4 py-8 text-center text-gray-400">Cargando...</td></tr>
-                  : filtered.length === 0 ? <tr><td colSpan={7} className="px-4 py-8 text-center text-gray-400">No se encontró equipamiento</td></tr>
-                  : filtered.map(eq => (
-                    <tr key={eq.id} className="hover:bg-bone/50 transition-colors">
-                      <td className="px-4 py-3 font-medium text-dark">{eq.name}</td>
-                      <td className="px-4 py-3 text-sm text-gray-600">{categoryLabels[eq.category]}</td>
-                      <td className="px-4 py-3 text-sm text-gray-600">{eq.brand || '—'}</td>
-                      <td className="px-4 py-3"><Badge variant={statusConfig[eq.status]?.variant}>{statusConfig[eq.status]?.label}</Badge></td>
-                      <td className="px-4 py-3 text-sm text-gray-600">{eq.lastMaintenance ? new Date(eq.lastMaintenance).toLocaleDateString('es-CR') : '—'}</td>
-                      <td className="px-4 py-3 text-sm">
+                  {isLoading ? (
+                    <tr><td colSpan={8} className="px-4 py-8 text-center text-gray-400">Cargando...</td></tr>
+                  ) : filtered.length === 0 ? (
+                    <tr><td colSpan={8} className="px-4 py-8 text-center text-gray-400">No se encontró equipamiento</td></tr>
+                  ) : filtered.map(eq => (
+                    <tr key={eq.id} onClick={() => setDetailEq(eq)} className="hover:bg-bone/50 transition-colors cursor-pointer">
+                      <td className="px-4 py-3 font-medium text-dark text-sm">{eq.name}</td>
+                      <td className="px-4 py-3 text-sm text-gray-600 hidden sm:table-cell">{categoryLabels[eq.category]}</td>
+                      <td className="px-4 py-3 text-sm text-gray-600 hidden md:table-cell">{eq.brand || '—'}</td>
+                      <td className="px-4 py-3">
+                        <Badge variant={statusConfig[eq.status]?.variant}>
+                          {statusConfig[eq.status]?.label}
+                        </Badge>
+                      </td>
+                      <td className="px-4 py-3 text-sm text-gray-600 hidden md:table-cell">
+                        {eq.lastMaintenance ? new Date(eq.lastMaintenance).toLocaleDateString('es-CR') : '—'}
+                      </td>
+                      <td className="px-4 py-3 text-sm hidden sm:table-cell">
                         {eq.nextMaintenance ? (
                           <span className={new Date(eq.nextMaintenance) <= new Date() ? 'text-red-500 font-medium' : 'text-gray-600'}>
                             {new Date(eq.nextMaintenance).toLocaleDateString('es-CR')}
                           </span>
                         ) : '—'}
                       </td>
+                      <td className="px-4 py-3 text-sm text-gray-600 text-center hidden lg:table-cell">
+                        {(eq as any)._count?.maintenanceRecords ?? 0}
+                      </td>
                       <td className="px-4 py-3">
-                        <div className="flex items-center gap-1">
-                          <button onClick={() => setMaintenanceEquipment(eq)} className="p-1.5 rounded-lg hover:bg-orange-50 text-orange-600"><Wrench className="h-4 w-4" /></button>
-                          <button onClick={() => setEditEquipment(eq)} className="p-1.5 rounded-lg hover:bg-primary/10 text-primary"><Edit2 className="h-4 w-4" /></button>
-                          <button onClick={() => { if (confirm('¿Eliminar equipo?')) deleteMutation.mutate(eq.id); }} className="p-1.5 rounded-lg hover:bg-red-50 text-red-500"><Trash2 className="h-4 w-4" /></button>
-                        </div>
+                        <ChevronRight className="h-4 w-4 text-gray-300" />
                       </td>
                     </tr>
                   ))}
@@ -108,16 +168,288 @@ export default function EquipmentPage() {
           </div>
         </div>
 
+        {/* Detail modal */}
+        {detailEq && (
+          <EquipmentDetailModal
+            equipment={detailFull ?? detailEq}
+            isAdmin={isAdmin}
+            onClose={() => setDetailEq(null)}
+            onEdit={() => { setEditEq(detailFull ?? detailEq); setDetailEq(null); }}
+            onMaintenance={() => { setMaintenanceEq(detailFull ?? detailEq); setDetailEq(null); }}
+            onDelete={() => {
+              if (confirm('¿Eliminar este equipo?')) deleteMutation.mutate(detailEq.id);
+            }}
+            onRefresh={() => qc.invalidateQueries({ queryKey: ['equipment', detailEq.id] })}
+          />
+        )}
+
+        {/* Create modal */}
         <Modal open={showCreate} onClose={() => setShowCreate(false)} title="Agregar Equipo" size="md">
-          <EquipmentForm catalog={catalog} onSuccess={() => { setShowCreate(false); qc.invalidateQueries({ queryKey: ['equipment'] }); }} onCancel={() => setShowCreate(false)} />
+          <EquipmentForm catalog={catalog}
+            onSuccess={() => { setShowCreate(false); qc.invalidateQueries({ queryKey: ['equipment'] }); }}
+            onCancel={() => setShowCreate(false)} />
         </Modal>
-        <Modal open={!!editEquipment} onClose={() => setEditEquipment(null)} title="Editar Equipo" size="md">
-          {editEquipment && <EquipmentForm equipment={editEquipment} catalog={catalog} onSuccess={() => { setEditEquipment(null); qc.invalidateQueries({ queryKey: ['equipment'] }); }} onCancel={() => setEditEquipment(null)} />}
+
+        {/* Edit modal */}
+        <Modal open={!!editEq} onClose={() => setEditEq(null)} title="Editar Equipo" size="md">
+          {editEq && (
+            <EquipmentForm equipment={editEq} catalog={catalog}
+              onSuccess={() => { setEditEq(null); qc.invalidateQueries({ queryKey: ['equipment'] }); }}
+              onCancel={() => setEditEq(null)} />
+          )}
         </Modal>
-        <Modal open={!!maintenanceEquipment} onClose={() => setMaintenanceEquipment(null)} title="Registrar Mantenimiento" size="sm">
-          {maintenanceEquipment && <MaintenanceForm equipment={maintenanceEquipment} onSuccess={() => { setMaintenanceEquipment(null); qc.invalidateQueries({ queryKey: ['equipment'] }); }} onCancel={() => setMaintenanceEquipment(null)} />}
+
+        {/* Maintenance modal */}
+        <Modal open={!!maintenanceEq} onClose={() => setMaintenanceEq(null)} title="Registrar Mantenimiento" size="sm">
+          {maintenanceEq && (
+            <MaintenanceForm equipment={maintenanceEq}
+              onSuccess={() => { setMaintenanceEq(null); qc.invalidateQueries({ queryKey: ['equipment'] }); }}
+              onCancel={() => setMaintenanceEq(null)} />
+          )}
         </Modal>
       </DashboardLayout>
     </ProtectedRoute>
+  );
+}
+
+// ── Equipment detail modal ──────────────────────────────────────────────────
+function EquipmentDetailModal({ equipment, isAdmin, onClose, onEdit, onMaintenance, onDelete, onRefresh }: {
+  equipment: Equipment & { maintenanceRecords?: any[] };
+  isAdmin: boolean;
+  onClose: () => void;
+  onEdit: () => void;
+  onMaintenance: () => void;
+  onDelete: () => void;
+  onRefresh: () => void;
+}) {
+  const records = equipment.maintenanceRecords ?? [];
+  const [editingRecord, setEditingRecord] = useState<any | null>(null);
+
+  function isSameDay(dateStr: string) {
+    const d = new Date(dateStr);
+    const now = new Date();
+    return d.getFullYear() === now.getFullYear() && d.getMonth() === now.getMonth() && d.getDate() === now.getDate();
+  }
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center sm:p-4 bg-black/50">
+      <div className="bg-white rounded-t-2xl sm:rounded-2xl shadow-2xl w-full sm:max-w-lg max-h-[95vh] flex flex-col">
+
+        {/* Header */}
+        <div className="flex items-start justify-between p-6 border-b border-gray-100 shrink-0">
+          <div className="flex-1 min-w-0">
+            <h2 className="text-xl font-bold text-dark truncate">{equipment.name}</h2>
+            {equipment.brand && <p className="text-sm text-gray-500 mt-0.5">{equipment.brand}</p>}
+          </div>
+          <div className="flex items-center gap-1 ml-4 shrink-0">
+            {isAdmin && (
+              <button onClick={onDelete}
+                className="p-2 rounded-lg hover:bg-red-50 transition-colors" aria-label="Eliminar">
+                <Trash2 className="h-4 w-4 text-red-400" />
+              </button>
+            )}
+            {isAdmin && (
+              <button onClick={onEdit}
+                className="p-2 rounded-lg hover:bg-bone transition-colors" aria-label="Editar">
+                <Pencil className="h-4 w-4 text-gray-400" />
+              </button>
+            )}
+            <button onClick={onClose}
+              className="p-2 rounded-lg hover:bg-bone transition-colors" aria-label="Cerrar">
+              <X className="h-5 w-5 text-gray-500" />
+            </button>
+          </div>
+        </div>
+
+        <div className="flex-1 overflow-y-auto p-6 space-y-5">
+          {/* Info grid */}
+          <div className="grid grid-cols-2 gap-2">
+            <InfoTile
+              icon={<Tag className="h-4 w-4" />}
+              iconClass="text-violet-500"
+              label="Categoría"
+              value={categoryLabels[equipment.category] ?? equipment.category}
+            />
+            <InfoTile
+              icon={<Activity className="h-4 w-4" />}
+              iconClass={
+                equipment.status === 'OPERATIONAL' ? 'text-emerald-500' :
+                equipment.status === 'MAINTENANCE' ? 'text-amber-500' :
+                equipment.status === 'DAMAGED' ? 'text-red-500' : 'text-gray-400'
+              }
+              label="Estado"
+            >
+              <Badge variant={statusConfig[equipment.status]?.variant} className="text-xs">
+                {statusConfig[equipment.status]?.label}
+              </Badge>
+            </InfoTile>
+            <InfoTile
+              icon={<CalendarCheck className="h-4 w-4" />}
+              iconClass="text-sky-500"
+              label="Último mantenimiento"
+              value={equipment.lastMaintenance ? new Date(equipment.lastMaintenance).toLocaleDateString('es-CR') : 'Sin registro'}
+            />
+            <InfoTile
+              icon={<CalendarClock className="h-4 w-4" />}
+              iconClass="text-orange-500"
+              label="Próximo mantenimiento"
+            >
+              {equipment.nextMaintenance ? (
+                <span className={new Date(equipment.nextMaintenance) <= new Date() ? 'text-red-500 text-sm font-semibold' : 'text-dark text-sm font-semibold'}>
+                  {new Date(equipment.nextMaintenance).toLocaleDateString('es-CR')}
+                </span>
+              ) : <span className="text-sm text-gray-400">—</span>}
+            </InfoTile>
+            {equipment.purchaseDate && (
+              <InfoTile
+                icon={<ShoppingCart className="h-4 w-4" />}
+                iconClass="text-teal-500"
+                label="Fecha de compra"
+                value={new Date(equipment.purchaseDate).toLocaleDateString('es-CR')}
+              />
+            )}
+            <InfoTile
+              icon={<RefreshCw className="h-4 w-4" />}
+              iconClass="text-primary-active"
+              label="Frecuencia mant."
+              value={`Cada ${equipment.maintenanceFrequencyDays} días`}
+            />
+          </div>
+
+          {equipment.notes && (
+            <div className="bg-bone rounded-xl p-3">
+              <p className="text-xs text-gray-400 mb-1">Notas</p>
+              <p className="text-sm text-dark">{equipment.notes}</p>
+            </div>
+          )}
+
+          {/* Maintenance history */}
+          <div>
+            <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-2">
+              Historial de mantenimientos ({records.length})
+            </p>
+            {records.length === 0 ? (
+              <div className="rounded-xl border border-dashed border-gray-200 py-6 flex items-center justify-center">
+                <span className="text-xs text-gray-300">Sin registros de mantenimiento</span>
+              </div>
+            ) : (
+              <div className="space-y-2">
+                {records.map((r: any) => (
+                  <div key={r.id}>
+                    {editingRecord?.id === r.id ? (
+                      <MaintenanceRecordEditForm
+                        record={r}
+                        onSave={() => { setEditingRecord(null); onRefresh(); }}
+                        onCancel={() => setEditingRecord(null)}
+                      />
+                    ) : (
+                      <div className="bg-bone rounded-xl p-3 space-y-1">
+                        <div className="flex items-center justify-between gap-2">
+                          <span className="text-xs font-semibold text-dark">
+                            {maintenanceTypeLabels[r.type] ?? r.type}
+                          </span>
+                          <div className="flex items-center gap-1">
+                            <span className="text-xs text-gray-400">
+                              {new Date(r.date).toLocaleDateString('es-CR')}
+                            </span>
+                            {isSameDay(r.date) && (
+                              <button onClick={() => setEditingRecord(r)}
+                                className="p-1 rounded hover:bg-white transition-colors" aria-label="Editar registro">
+                                <Pencil className="h-3 w-3 text-gray-400" />
+                              </button>
+                            )}
+                          </div>
+                        </div>
+                        <p className="text-xs text-gray-600">{r.description}</p>
+                        <div className="flex items-center justify-between text-xs text-gray-400">
+                          <span>Por: {r.performedBy}</span>
+                          {r.cost && <span className="font-medium text-dark">₡{Number(r.cost).toLocaleString('es-CR')}</span>}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* Footer actions */}
+        <div className="p-6 border-t border-gray-100 shrink-0 flex justify-end">
+          {isAdmin && (
+            <Button variant="outline" onClick={onMaintenance} className="flex items-center gap-2">
+              <Wrench className="h-4 w-4" /> Registrar mantenimiento
+            </Button>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function MaintenanceRecordEditForm({ record, onSave, onCancel }: {
+  record: any; onSave: () => void; onCancel: () => void;
+}) {
+  const [type, setType]               = useState(record.type);
+  const [description, setDescription] = useState(record.description);
+  const [cost, setCost]               = useState(record.cost ? String(record.cost) : '');
+  const [performedBy, setPerformedBy] = useState(record.performedBy);
+  const [error, setError]             = useState('');
+
+  const mutation = useMutation({
+    mutationFn: () => equipmentService.updateMaintenance(record.id, {
+      type, description, cost: cost ? Number(cost) : 0, performedBy,
+    }),
+    onSuccess: onSave,
+    onError: () => setError('Error al guardar los cambios.'),
+  });
+
+  return (
+    <div className="bg-white border border-primary/30 rounded-xl p-3 space-y-2">
+      {/* Row 1: type + description */}
+      <div className="grid grid-cols-[160px_1fr] gap-2">
+        <Select value={type} onChange={e => setType(e.target.value)}>
+          <option value="ROUTINE">Rutinario</option>
+          <option value="REPAIR">Reparación</option>
+          <option value="REPLACEMENT">Reemplazo</option>
+        </Select>
+        <Input value={description} onChange={e => setDescription(e.target.value)}
+          placeholder="Descripción" className="h-10 text-sm" />
+      </div>
+
+      {/* Row 2: cost + performedBy + action buttons */}
+      <div className="grid grid-cols-[1fr_1fr_auto] gap-2 items-center">
+        <Input type="number" min={0} value={cost} onChange={e => setCost(e.target.value)}
+          placeholder="Costo (₡)" className="h-9 text-sm" />
+        <Input value={performedBy} onChange={e => setPerformedBy(e.target.value)}
+          placeholder="Realizado por" className="h-9 text-sm" />
+        <div className="flex gap-1">
+          <button type="button" onClick={onCancel}
+            className="p-2 rounded-lg border border-gray-200 hover:bg-bone transition-colors" aria-label="Cancelar">
+            <X className="h-4 w-4 text-gray-400" />
+          </button>
+          <button type="button" onClick={() => mutation.mutate()} disabled={mutation.isPending}
+            className="p-2 rounded-lg bg-primary hover:bg-primary-hover transition-colors disabled:opacity-50" aria-label="Guardar">
+            <Check className="h-4 w-4 text-dark" />
+          </button>
+        </div>
+      </div>
+
+      {error && <p className="text-xs text-red-500 text-center">{error}</p>}
+    </div>
+  );
+}
+
+function InfoTile({ icon, iconClass, label, value, children }: {
+  icon?: React.ReactNode; iconClass?: string; label: string; value?: string; children?: React.ReactNode;
+}) {
+  return (
+    <div className="bg-bone rounded-xl p-3 flex items-center gap-3">
+      {icon && <div className={`shrink-0 ${iconClass}`}>{icon}</div>}
+      <div className="min-w-0 flex-1">
+        <p className="text-[11px] text-gray-400 leading-none mb-1">{label}</p>
+        {children ?? <p className="text-sm font-semibold text-dark">{value}</p>}
+      </div>
+    </div>
   );
 }

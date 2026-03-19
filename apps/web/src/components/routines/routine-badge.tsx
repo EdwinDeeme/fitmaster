@@ -1,33 +1,37 @@
-import { Badge } from '@/components/ui/badge';
 import {
   DifficultyLevel,
   GoalType,
   DIFFICULTY_LABELS,
-  DIFFICULTY_COLORS,
   GOAL_LABELS,
-  GOAL_COLORS,
 } from '@/types/routines';
 
-interface DifficultyBadgeProps {
-  difficulty: DifficultyLevel;
-}
+const DIFFICULTY_DOT: Record<DifficultyLevel, string> = {
+  BEGINNER:     'bg-emerald-400',
+  INTERMEDIATE: 'bg-amber-400',
+  ADVANCED:     'bg-rose-400',
+};
 
-export function DifficultyBadge({ difficulty }: DifficultyBadgeProps) {
+const GOAL_DOT: Record<GoalType, string> = {
+  WEIGHT_LOSS: 'bg-sky-400',
+  MUSCLE_GAIN: 'bg-violet-400',
+  MAINTENANCE: 'bg-gray-400',
+  STRENGTH:    'bg-orange-400',
+  ENDURANCE:   'bg-teal-400',
+};
+
+function Chip({ dot, label }: { dot: string; label: string }) {
   return (
-    <Badge className={DIFFICULTY_COLORS[difficulty]}>
-      {DIFFICULTY_LABELS[difficulty]}
-    </Badge>
+    <span className="inline-flex items-center gap-1.5 rounded-md bg-gray-50 border border-gray-100 px-2 py-0.5 text-xs font-medium text-gray-600">
+      <span className={`w-1.5 h-1.5 rounded-full shrink-0 ${dot}`} />
+      {label}
+    </span>
   );
 }
 
-interface GoalBadgeProps {
-  goal: GoalType;
+export function DifficultyBadge({ difficulty }: { difficulty: DifficultyLevel }) {
+  return <Chip dot={DIFFICULTY_DOT[difficulty]} label={DIFFICULTY_LABELS[difficulty]} />;
 }
 
-export function GoalBadge({ goal }: GoalBadgeProps) {
-  return (
-    <Badge className={GOAL_COLORS[goal]}>
-      {GOAL_LABELS[goal]}
-    </Badge>
-  );
+export function GoalBadge({ goal }: { goal: GoalType }) {
+  return <Chip dot={GOAL_DOT[goal]} label={GOAL_LABELS[goal]} />;
 }

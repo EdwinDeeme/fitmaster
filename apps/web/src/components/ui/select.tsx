@@ -1,7 +1,8 @@
 'use client';
 
 import * as React from 'react';
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect, useLayoutEffect, useCallback } from 'react';
+import { createPortal } from 'react-dom';
 import { ChevronDown, Check } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
@@ -11,108 +12,149 @@ const Select = React.forwardRef<HTMLSelectElement, SelectProps>(
   ({ className, children, value, defaultValue, onChange, disabled, ...props }, ref) => {
     const options = React.Children.toArray(children).filter(
       (c): c is React.ReactElement<React.OptionHTMLAttributes<HTMLOptionElement>> =>
-        React.isValidElement(c) && (c.type === 'option' || (c as any).type?.displayName === 'option'),
+        React.isValidElement(c) &&
+        (c.type === 'option' || (c as any).type?.displayName === 'option'),
     );
 
-    const [open, setOpen] = useState(false);
-    const [selected, setSelected] = useState<string>(
+    const isControlled = value !== undefined;
+    const [internalValue, setInternalValue] = useState<string>(
       String(value ?? defaultValue ?? options[0]?.props.value ?? ''),
     );
-    const containerRef = useRef<HTMLDivElement>(null);
-    const hiddenRef    = useRef<HTMLSelectElement>(null);
+    const selected = isControlled ? String(value) : internalValue;
 
-    // sync controlled value
-    useEffect(() => {
-      if (value !== undefined) setSelected(String(value));
-    }, [value]);
+    const [open, setOpen] = useState(false);
+    const [rect, setRect] = useState<DOMRect | null>(null);
+    const triggerRef = useRef<HTMLButtonElement>(null);
+    const dropdownRef = useRef<HTMLUListElement>(null);
 
-    // close on outside click
+    // Keep onChange stable
+    const onChangeRef = useRef(onChange);
+    useEffect(() => { onChangeRef.current = onChange; });
+
+    // Sync controlled value
     useEffect(() => {
+      if (isControlled) setInternalValue(String(value));
+    }, [value, isControlled]);
+
+    // Measure trigger position when opening
+    useLayoutEffect(() => {
+      if (open && triggerRef.current) {
+        setRect(triggerRef.current.getBoundingClientRect());
+      }
+    }, [open]);
+
+    // Close on outside click — check both trigger and dropdown
+    useEffect(() => {
+      if (!open) return;
       const handler = (e: MouseEvent) => {
-        if (containerRef.current && !containerRef.current.contains(e.target as Node)) setOpen(false);
+        const target = e.target as Node;
+        if (
+          triggerRef.current?.contains(target) ||
+          dropdownRef.current?.contains(target)
+        ) return;
+        setOpen(false);
       };
-      document.addEventListener('mousedown', handler);
-      return () => document.removeEventListener('mousedown', handler);
+      // Use capture so it fires before anything else
+      document.addEventListener('mousedown', handler, true);
+      return () => document.removeEventListener('mousedown', handler, true);
+    }, [open]);
+
+    // Close on scroll/resize to avoid stale position
+    useEffect(() => {
+      if (!open) return;
+      const close = () => setOpen(false);
+      window.addEventListener('scroll', close, true);
+      window.addEventListener('resize', close);
+      return () => {
+        window.removeEventListener('scroll', close, true);
+        window.removeEventListener('resize', close);
+      };
+    }, [open]);
+
+    const selectedLabel =
+      options.find(o => String(o.props.value) === selected)?.props.children ?? selected;
+
+    const handleSelect = useCallback((val: string) => {
+      setInternalValue(val);
+      setOpen(false);
+      onChangeRef.current?.({
+        target: { value: val } as HTMLSelectElement,
+        currentTarget: { value: val } as HTMLSelectElement,
+      } as React.ChangeEvent<HTMLSelectElement>);
     }, []);
 
-    const selectedLabel = options.find(o => String(o.props.value) === selected)?.props.children ?? selected;
-
-    const handleSelect = (val: string) => {
-      setSelected(val);
-      setOpen(false);
-      // fire synthetic onChange so react-hook-form picks it up
-      if (hiddenRef.current) {
-        const nativeInput = hiddenRef.current;
-        const nativeSetter = Object.getOwnPropertyDescriptor(window.HTMLSelectElement.prototype, 'value')?.set;
-        nativeSetter?.call(nativeInput, val);
-        nativeInput.dispatchEvent(new Event('change', { bubbles: true }));
-      }
-    };
+    const dropdownStyle: React.CSSProperties = rect
+      ? {
+          position: 'fixed',
+          top: rect.bottom + 4,
+          left: rect.left,
+          width: rect.width,
+          zIndex: 99999,
+        }
+      : { display: 'none' };
 
     return (
-      <div ref={containerRef} className="relative w-full">
-        {/* Hidden native select for form compatibility */}
-        <select
-          ref={(node) => {
-            (hiddenRef as any).current = node;
-            if (typeof ref === 'function') ref(node);
-            else if (ref) (ref as any).current = node;
-          }}
-          value={selected}
-          onChange={e => { setSelected(e.target.value); onChange?.(e); }}
-          disabled={disabled}
-          className="sr-only"
-          tabIndex={-1}
-          {...props}
-        >
-          {children}
-        </select>
+      <>
+        <div className="relative w-full">
+          <button
+            ref={triggerRef}
+            type="button"
+            disabled={disabled}
+            onClick={() => setOpen(o => !o)}
+            className={cn(
+              'flex h-12 w-full items-center justify-between rounded-lg border border-gray-200 bg-white px-4 text-sm text-dark',
+              'focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent',
+              'disabled:cursor-not-allowed disabled:opacity-50',
+              open && 'ring-2 ring-primary border-transparent',
+              className,
+            )}
+          >
+            <span className={cn('text-left truncate', !selected && 'text-gray-400')}>
+              {selectedLabel || 'Seleccionar...'}
+            </span>
+            <ChevronDown
+              className={cn(
+                'h-4 w-4 text-gray-400 transition-transform shrink-0 ml-2',
+                open && 'rotate-180',
+              )}
+            />
+          </button>
+        </div>
 
-        {/* Custom trigger */}
-        <button
-          type="button"
-          disabled={disabled}
-          onClick={() => setOpen(o => !o)}
-          className={cn(
-            'flex h-12 w-full items-center justify-between rounded-lg border border-gray-200 bg-white px-4 text-sm text-dark',
-            'focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent',
-            'disabled:cursor-not-allowed disabled:opacity-50',
-            open && 'ring-2 ring-primary border-transparent',
-            className,
+        {open && typeof document !== 'undefined' &&
+          createPortal(
+            <ul
+              ref={dropdownRef}
+              style={dropdownStyle}
+              className="rounded-xl border border-gray-100 bg-white shadow-xl"
+            >
+              {options.map((opt, i) => {
+                const val = String(opt.props.value ?? '');
+                const label = opt.props.children;
+                const isSelected = val === selected;
+                return (
+                  <li key={i}>
+                    <button
+                      type="button"
+                      onMouseDown={e => e.preventDefault()}
+                      onClick={() => handleSelect(val)}
+                      className={cn(
+                        'flex w-full items-center justify-between px-4 py-2.5 text-sm transition-colors',
+                        isSelected
+                          ? 'bg-primary text-dark font-medium'
+                          : 'text-dark hover:bg-primary/20',
+                      )}
+                    >
+                      <span className="text-left">{label}</span>
+                      {isSelected && <Check className="h-4 w-4 shrink-0 ml-2" />}
+                    </button>
+                  </li>
+                );
+              })}
+            </ul>,
+            document.body,
           )}
-        >
-          <span className={cn(!selected && 'text-gray-400')}>{selectedLabel || 'Seleccionar...'}</span>
-          <ChevronDown className={cn('h-4 w-4 text-gray-400 transition-transform', open && 'rotate-180')} />
-        </button>
-
-        {/* Dropdown */}
-        {open && (
-          <ul className="absolute z-50 mt-1 w-full rounded-xl border border-gray-100 bg-white shadow-lg overflow-hidden">
-            {options.map((opt, i) => {
-              const val   = String(opt.props.value ?? '');
-              const label = opt.props.children;
-              const isSelected = val === selected;
-              return (
-                <li key={i}>
-                  <button
-                    type="button"
-                    onClick={() => handleSelect(val)}
-                    className={cn(
-                      'flex w-full items-center justify-between px-4 py-2.5 text-sm transition-colors',
-                      isSelected
-                        ? 'bg-primary text-dark font-medium'
-                        : 'text-dark hover:bg-primary/20',
-                    )}
-                  >
-                    {label}
-                    {isSelected && <Check className="h-4 w-4 shrink-0" />}
-                  </button>
-                </li>
-              );
-            })}
-          </ul>
-        )}
-      </div>
+      </>
     );
   },
 );

@@ -71,6 +71,15 @@ export class RoutinesService {
       where,
       include: {
         _count: { select: { assignments: true } },
+        assignments: {
+          where: { isActive: true },
+          include: {
+            client: {
+              select: { id: true, firstName: true, lastName: true, email: true, weight: true, height: true, bmi: true, dateOfBirth: true },
+            },
+          },
+          take: 1,
+        },
       },
       orderBy: { createdAt: 'desc' },
     });
@@ -84,7 +93,7 @@ export class RoutinesService {
           where: { isActive: true },
           include: {
             client: {
-              select: { id: true, firstName: true, lastName: true, email: true },
+              select: { id: true, firstName: true, lastName: true, email: true, weight: true, height: true, bmi: true, dateOfBirth: true },
             },
           },
         },
@@ -197,6 +206,15 @@ export class RoutinesService {
       where,
       include: {
         _count: { select: { assignments: true } },
+        assignments: {
+          where: { isActive: true },
+          include: {
+            client: {
+              select: { id: true, firstName: true, lastName: true, email: true, weight: true, height: true, bmi: true, dateOfBirth: true },
+            },
+          },
+          take: 1,
+        },
       },
       orderBy: { updatedAt: 'desc' },
       take: limit,

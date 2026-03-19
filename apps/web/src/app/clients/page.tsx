@@ -56,16 +56,16 @@ export default function ClientsPage() {
       <DashboardLayout>
         <div className="py-6 space-y-6">
           {/* Header */}
-          <div className="flex items-center justify-between">
+          <div className="flex items-center justify-between gap-3 flex-wrap">
             <div className="flex items-center gap-3">
               <div className="p-2 bg-primary/10 rounded-xl"><Users className="h-6 w-6 text-primary" /></div>
               <div>
-                <h1 className="text-2xl font-bold text-dark">Clientes</h1>
+                <h1 className="text-xl sm:text-2xl font-bold text-dark">Clientes</h1>
                 <p className="text-sm text-gray-500">{clients.length} clientes registrados</p>
               </div>
             </div>
             <Button onClick={() => setShowCreate(true)} className="flex items-center gap-2">
-              <Plus className="h-4 w-4" /> Nuevo Cliente
+              <Plus className="h-4 w-4" /> <span className="hidden sm:inline">Nuevo Cliente</span><span className="sm:hidden">Nuevo</span>
             </Button>
           </div>
 
@@ -81,9 +81,13 @@ export default function ClientsPage() {
               <table className="w-full">
                 <thead className="bg-bone border-b border-gray-100">
                   <tr>
-                    {['Cliente', 'Email', 'Teléfono', 'Membresía', 'Vence', 'Estado', ''].map(h => (
-                      <th key={h} className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">{h}</th>
-                    ))}
+                    <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Cliente</th>
+                    <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider hidden sm:table-cell">Email</th>
+                    <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider hidden md:table-cell">Teléfono</th>
+                    <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Membresía</th>
+                    <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider hidden md:table-cell">Vence</th>
+                    <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider hidden sm:table-cell">Estado</th>
+                    <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider"></th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-50">
@@ -99,19 +103,19 @@ export default function ClientsPage() {
                     >
                       <td className="px-4 py-3">
                         <div className="flex items-center gap-3">
-                          <div className="w-8 h-8 rounded-full bg-primary/20 flex items-center justify-center text-xs font-bold text-dark">
+                          <div className="w-8 h-8 rounded-full bg-primary/20 flex items-center justify-center text-xs font-bold text-dark shrink-0">
                             {client.firstName[0]}{client.lastName[0]}
                           </div>
-                          <span className="font-medium text-dark">{client.firstName} {client.lastName}</span>
+                          <span className="font-medium text-dark text-sm">{client.firstName} {client.lastName}</span>
                         </div>
                       </td>
-                      <td className="px-4 py-3 text-sm text-gray-600">{client.email}</td>
-                      <td className="px-4 py-3 text-sm text-gray-600">{client.phone || '—'}</td>
+                      <td className="px-4 py-3 text-sm text-gray-600 hidden sm:table-cell">{client.email}</td>
+                      <td className="px-4 py-3 text-sm text-gray-600 hidden md:table-cell">{client.phone || '—'}</td>
                       <td className="px-4 py-3">{membershipBadge(client)}</td>
-                      <td className="px-4 py-3 text-sm text-gray-600">
+                      <td className="px-4 py-3 text-sm text-gray-600 hidden md:table-cell">
                         {client.memberships?.[0] ? new Date(client.memberships[0].endDate).toLocaleDateString('es-CR') : '—'}
                       </td>
-                      <td className="px-4 py-3">{statusBadge(client.status)}</td>
+                      <td className="px-4 py-3 hidden sm:table-cell">{statusBadge(client.status)}</td>
                       <td className="px-4 py-3" onClick={e => e.stopPropagation()}>
                         <div className="flex items-center gap-1">
                           <button onClick={() => setEditClient(client)} className="p-1.5 rounded-lg hover:bg-primary/10 text-primary transition-colors"><Edit2 className="h-4 w-4" /></button>

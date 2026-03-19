@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Body, Patch, Param, Delete, UseGuards } from '@nestjs/common';
+import { Controller, Get, Post, Body, Patch, Param, Delete, UseGuards, BadRequestException } from '@nestjs/common';
 import { EquipmentService } from './equipment.service';
 import { CreateEquipmentDto } from './dto';
 import { Roles } from '../auth/decorators/roles.decorator';
@@ -17,6 +17,17 @@ export class EquipmentController {
   @Roles(UserRole.GYM_ADMIN, UserRole.TRAINER)
   getCatalog() {
     return this.equipmentService.getCatalog();
+  }
+
+  // Static routes MUST come before :id routes
+  @Patch('maintenance/:recordId')
+  @Roles(UserRole.GYM_ADMIN, UserRole.TRAINER)
+  async updateMaintenance(@CurrentUser() user: TokenPayload, @Param('recordId') recordId: string, @Body() data: any) {
+    try {
+      return await this.equipmentService.updateMaintenanceRecord(user.gymId!, recordId, data);
+    } catch (e: any) {
+      throw new BadRequestException(e.message);
+    }
   }
 
   @Post()

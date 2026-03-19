@@ -45,6 +45,10 @@ export interface RoutineAssignment {
     firstName: string;
     lastName: string;
     email: string;
+    weight?: number;
+    height?: number;
+    bmi?: number;
+    dateOfBirth?: string;
   };
   routine?: {
     id: string;

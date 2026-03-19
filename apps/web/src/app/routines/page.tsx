@@ -9,7 +9,6 @@ import { RoutineCard } from '@/components/routines/routine-card';
 import { RoutineFiltersBar } from '@/components/routines/routine-filters';
 import { RoutineDetailModal } from '@/components/routines/routine-detail-modal';
 import { RoutineFormModal } from '@/components/routines/routine-form-modal';
-import { AssignRoutineModal } from '@/components/routines/assign-routine-modal';
 import { DeleteRoutineModal } from '@/components/routines/delete-routine-modal';
 import { routinesService, RoutineFilters } from '@/services/routines.service';
 import { Routine } from '@/types/routines';
@@ -22,7 +21,6 @@ type ModalState =
   | { type: 'view'; routine: Routine }
   | { type: 'create' }
   | { type: 'edit'; routine: Routine }
-  | { type: 'assign'; routine: Routine }
   | { type: 'delete'; routine: Routine };
 
 export default function RoutinesPage() {
@@ -101,7 +99,6 @@ export default function RoutinesPage() {
                   routine={routine}
                   canEdit={canEdit}
                   onView={(r) => setModal({ type: 'view', routine: r })}
-                  onAssign={(r) => setModal({ type: 'assign', routine: r })}
                   onEdit={(r) => setModal({ type: 'edit', routine: r })}
                   onDelete={(r) => setModal({ type: 'delete', routine: r })}
                 />
@@ -115,19 +112,12 @@ export default function RoutinesPage() {
           <RoutineDetailModal
             routine={modal.routine}
             onClose={closeModal}
-            onAssign={() => setModal({ type: 'assign', routine: modal.routine })}
+            onEdit={canEdit ? (r) => setModal({ type: 'edit', routine: r }) : undefined}
           />
         )}
         {(modal.type === 'create' || modal.type === 'edit') && (
           <RoutineFormModal
             routine={modal.type === 'edit' ? modal.routine : undefined}
-            onClose={closeModal}
-            onSuccess={closeModal}
-          />
-        )}
-        {modal.type === 'assign' && (
-          <AssignRoutineModal
-            routine={modal.routine}
             onClose={closeModal}
             onSuccess={closeModal}
           />

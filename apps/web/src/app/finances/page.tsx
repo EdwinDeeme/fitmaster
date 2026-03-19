@@ -173,30 +173,30 @@ export default function FinancesPage() {
       <DashboardLayout>
         <div className="py-6 space-y-6">
           {/* Header */}
-          <div className="flex items-center justify-between flex-wrap gap-4">
+          <div className="flex items-center justify-between flex-wrap gap-3">
             <div className="flex items-center gap-3">
               <div className="p-2 bg-green-50 rounded-xl"><DollarSign className="h-6 w-6 text-green-600" /></div>
               <div>
-                <h1 className="text-2xl font-bold text-dark">Finanzas</h1>
+                <h1 className="text-xl sm:text-2xl font-bold text-dark">Finanzas</h1>
                 <p className="text-sm text-gray-500">Administración de ingresos y egresos</p>
               </div>
             </div>
-            <div className="flex items-center gap-3">
-              <div className="min-w-[160px]">
+            <div className="flex items-center gap-2 flex-wrap">
+              <div className="w-36 sm:w-44">
                 <Select value={String(month)} onChange={e => setMonth(+e.target.value)}>
                   {MONTHS.map((m, i) => <option key={i} value={i + 1}>{m}</option>)}
                 </Select>
               </div>
-              <div className="min-w-[100px]">
+              <div className="w-24">
                 <Select value={String(year)} onChange={e => setYear(+e.target.value)}>
                   {[2024, 2025, 2026].map(y => <option key={y} value={y}>{y}</option>)}
                 </Select>
               </div>
               <Button onClick={() => setShowPayment(true)} size="sm" className="flex items-center gap-1">
-                <Plus className="h-4 w-4" />Ingreso
+                <Plus className="h-4 w-4" /><span className="hidden sm:inline">Ingreso</span>
               </Button>
               <Button onClick={() => setShowExpense(true)} size="sm" variant="outline" className="flex items-center gap-1">
-                <Plus className="h-4 w-4" />Egreso
+                <Plus className="h-4 w-4" /><span className="hidden sm:inline">Egreso</span>
               </Button>
             </div>
           </div>
@@ -252,9 +252,10 @@ export default function FinancesPage() {
                 <table className="w-full">
                   <thead className="bg-bone">
                     <tr>
-                      {['Fecha', 'Cliente / Descripción', 'Método', 'Monto'].map(h => (
-                        <th key={h} className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase">{h}</th>
-                      ))}
+                      <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase hidden sm:table-cell">Fecha</th>
+                      <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase">Cliente / Descripción</th>
+                      <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase hidden sm:table-cell">Método</th>
+                      <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase">Monto</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-gray-50">
@@ -263,17 +264,13 @@ export default function FinancesPage() {
                       : (summary?.payments ?? []).length === 0
                         ? <tr><td colSpan={4} className="px-4 py-6 text-center text-gray-400">Sin ingresos este mes</td></tr>
                         : (summary?.payments ?? []).map(p => (
-                          <tr
-                            key={p.id}
-                            onClick={() => setSelectedPayment(p)}
-                            className="hover:bg-bone/50 cursor-pointer transition-colors"
-                          >
-                            <td className="px-4 py-3 text-sm">{new Date(p.createdAt).toLocaleDateString('es-CR')}</td>
+                          <tr key={p.id} onClick={() => setSelectedPayment(p)} className="hover:bg-bone/50 cursor-pointer transition-colors">
+                            <td className="px-4 py-3 text-sm hidden sm:table-cell">{new Date(p.createdAt).toLocaleDateString('es-CR')}</td>
                             <td className="px-4 py-3 text-sm">
                               <p className="font-medium text-dark">{getClientName(p)}</p>
                               <p className="text-xs text-gray-400">{getPaymentDescription(p)}</p>
                             </td>
-                            <td className="px-4 py-3"><Badge variant="info">{methodLabels[p.method]}</Badge></td>
+                            <td className="px-4 py-3 hidden sm:table-cell"><Badge variant="info">{methodLabels[p.method]}</Badge></td>
                             <td className="px-4 py-3 text-sm font-bold text-green-700">{fmt(Number(p.amount))}</td>
                           </tr>
                         ))
@@ -295,9 +292,10 @@ export default function FinancesPage() {
                 <table className="w-full">
                   <thead className="bg-bone">
                     <tr>
-                      {['Fecha', 'Descripción', 'Categoría', 'Monto'].map(h => (
-                        <th key={h} className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase">{h}</th>
-                      ))}
+                      <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase hidden sm:table-cell">Fecha</th>
+                      <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase">Descripción</th>
+                      <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase hidden sm:table-cell">Categoría</th>
+                      <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase">Monto</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-gray-50">
@@ -306,14 +304,10 @@ export default function FinancesPage() {
                       : (summary?.expenses ?? []).length === 0
                         ? <tr><td colSpan={4} className="px-4 py-6 text-center text-gray-400">Sin egresos este mes</td></tr>
                         : (summary?.expenses ?? []).map(e => (
-                          <tr
-                            key={e.id}
-                            onClick={() => setSelectedExpense(e)}
-                            className="hover:bg-bone/50 cursor-pointer transition-colors"
-                          >
-                            <td className="px-4 py-3 text-sm">{new Date(e.date).toLocaleDateString('es-CR')}</td>
+                          <tr key={e.id} onClick={() => setSelectedExpense(e)} className="hover:bg-bone/50 cursor-pointer transition-colors">
+                            <td className="px-4 py-3 text-sm hidden sm:table-cell">{new Date(e.date).toLocaleDateString('es-CR')}</td>
                             <td className="px-4 py-3 text-sm font-medium">{e.description}</td>
-                            <td className="px-4 py-3"><Badge variant="secondary">{expenseCategoryLabels[e.category]}</Badge></td>
+                            <td className="px-4 py-3 hidden sm:table-cell"><Badge variant="secondary">{expenseCategoryLabels[e.category]}</Badge></td>
                             <td className="px-4 py-3 text-sm font-bold text-red-600">{fmt(Number(e.amount))}</td>
                           </tr>
                         ))

@@ -51,7 +51,7 @@ export function ExpenseForm({ onSuccess, onCancel }: Props) {
           <Select value={category} onChange={e => setCategory(e.target.value)}>
             <option value="">Seleccionar...</option>
             <option value="RENT">Alquiler</option>
-            <option value="UTILITIES">Servicios (agua, luz, internet)</option>
+            <option value="UTILITIES">Servicios</option>
             <option value="EQUIPMENT">Equipamiento</option>
             <option value="SALARIES">Salarios</option>
             <option value="MAINTENANCE">Mantenimiento</option>

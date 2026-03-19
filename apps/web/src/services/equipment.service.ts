@@ -29,4 +29,8 @@ export const equipmentService = {
     const { data } = await api.post(`/equipment/${id}/maintenance`, dto);
     return data;
   },
+  updateMaintenance: async (recordId: string, dto: any) => {
+    const { data } = await api.patch(`/equipment/maintenance/${recordId}`, dto);
+    return data;
+  },
 };

@@ -47,3 +47,32 @@ body {
   scrollbar-width: thin;
   scrollbar-color: #c1c1c1 #f1f1f1;
 }
+
+/* Custom scrollbar for select dropdowns */
+.select-dropdown::-webkit-scrollbar {
+  width: 4px;
+}
+.select-dropdown::-webkit-scrollbar-track {
+  background: transparent;
+}
+.select-dropdown::-webkit-scrollbar-button {
+  display: none;
+  height: 0;
+}
+.select-dropdown::-webkit-scrollbar-thumb {
+  background-color: #d1d5db;
+  border-radius: 99px;
+}
+.select-dropdown::-webkit-scrollbar-thumb:hover {
+  background-color: #9ca3af;
+}
+
+/* Marquee / ticker animation for overflowing text */
+@keyframes marquee {
+  0%   { transform: translateX(0); }
+  100% { transform: translateX(var(--marquee-offset)); }
+}
+
+.marquee-inner {
+  animation: marquee 4s linear infinite alternate;
+}

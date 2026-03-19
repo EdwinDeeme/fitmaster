@@ -60,25 +60,15 @@ export default function MembershipsPage() {
           </div>
 
           {/* Filters */}
-          <div className="flex gap-3">
+          <div className="flex flex-col sm:flex-row gap-3">
             <div className="relative flex-1">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
-              <Input
-                placeholder="Buscar membresía..."
-                className="pl-10"
-                value={search}
-                onChange={e => setSearch(e.target.value)}
-              />
+              <Input placeholder="Buscar membresía..." className="pl-10" value={search} onChange={e => setSearch(e.target.value)} />
             </div>
-            <div className="flex gap-1 bg-bone p-1 rounded-xl">
+            <div className="flex gap-1 bg-bone p-1 rounded-xl overflow-x-auto">
               {[['', 'Todas'], ['MONTHLY', 'Mensual'], ['QUARTERLY', 'Trimestral'], ['ANNUAL', 'Anual']].map(([val, label]) => (
-                <button
-                  key={val}
-                  onClick={() => setTypeFilter(val)}
-                  className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${
-                    typeFilter === val ? 'bg-white shadow-sm text-dark' : 'text-gray-500 hover:text-dark'
-                  }`}
-                >
+                <button key={val} onClick={() => setTypeFilter(val)}
+                  className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-colors whitespace-nowrap ${typeFilter === val ? 'bg-white shadow-sm text-dark' : 'text-gray-500 hover:text-dark'}`}>
                   {label}
                 </button>
               ))}
