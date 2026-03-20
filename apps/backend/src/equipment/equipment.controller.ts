@@ -1,6 +1,6 @@
 import { Controller, Get, Post, Body, Patch, Param, Delete, UseGuards, BadRequestException } from '@nestjs/common';
 import { EquipmentService } from './equipment.service';
-import { CreateEquipmentDto } from './dto';
+import { AddMaintenanceDto, CreateEquipmentDto } from './dto';
 import { Roles } from '../auth/decorators/roles.decorator';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
 import { TokenPayload } from '../auth/interfaces';
@@ -17,6 +17,12 @@ export class EquipmentController {
   @Roles(UserRole.GYM_ADMIN, UserRole.TRAINER)
   getCatalog() {
     return this.equipmentService.getCatalog();
+  }
+
+  @Get('maintenance-users')
+  @Roles(UserRole.GYM_ADMIN, UserRole.TRAINER)
+  getMaintenanceUsers(@CurrentUser() user: TokenPayload) {
+    return this.equipmentService.getMaintenanceUsers(user.gymId!);
   }
 
   // Static routes MUST come before :id routes
@@ -61,8 +67,8 @@ export class EquipmentController {
   }
 
   @Post(':id/maintenance')
-  @Roles(UserRole.GYM_ADMIN)
-  addMaintenance(@CurrentUser() user: TokenPayload, @Param('id') id: string, @Body() data: any) {
-    return this.equipmentService.addMaintenanceRecord(user.gymId!, id, data);
+  @Roles(UserRole.GYM_ADMIN, UserRole.TRAINER)
+  addMaintenance(@CurrentUser() user: TokenPayload, @Param('id') id: string, @Body() dto: AddMaintenanceDto) {
+    return this.equipmentService.addMaintenanceRecord(user.gymId!, id, dto);
   }
 }

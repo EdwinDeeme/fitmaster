@@ -12,6 +12,20 @@ export class EquipmentService {
     return EQUIPMENT_CATALOG;
   }
 
+  async getMaintenanceUsers(gymId: string) {
+    return this.prisma.user.findMany({
+      where: { gymId },
+      select: {
+        id: true,
+        firstName: true,
+        lastName: true,
+        email: true,
+        role: true,
+      },
+      orderBy: [{ role: 'asc' }, { firstName: 'asc' }, { lastName: 'asc' }],
+    });
+  }
+
   async create(gymId: string, dto: CreateEquipmentDto) {
     return this.prisma.equipment.create({
       data: {
@@ -64,6 +78,7 @@ export class EquipmentService {
     description?: string;
     cost?: number;
     performedBy?: string;
+    performedByUserId?: string;
   }) {
     const record = await this.prisma.maintenanceRecord.findFirst({
       where: { id: recordId, gymId },
@@ -80,13 +95,25 @@ export class EquipmentService {
       today.getDate() === recordDate.getDate();
     if (!sameDay) throw new Error('Solo se puede editar un registro el mismo día que fue creado');
 
+    let resolvedPerformedBy = data.performedBy;
+    if (data.performedByUserId) {
+      const performer = await this.prisma.user.findFirst({
+        where: { id: data.performedByUserId, gymId },
+        select: { firstName: true, lastName: true },
+      });
+      if (!performer) {
+        throw new NotFoundException('Usuario seleccionado para mantenimiento no encontrado');
+      }
+      resolvedPerformedBy = `${performer.firstName} ${performer.lastName}`.trim();
+    }
+
     const updated = await this.prisma.maintenanceRecord.update({
       where: { id: recordId },
       data: {
         ...(data.type && { type: data.type }),
         ...(data.description && { description: data.description }),
         ...(data.cost !== undefined && { cost: data.cost }),
-        ...(data.performedBy && { performedBy: data.performedBy }),
+        ...(resolvedPerformedBy && { performedBy: resolvedPerformedBy }),
       },
     });
 
@@ -111,7 +138,7 @@ export class EquipmentService {
         data: {
           description: expenseDesc,
           amount: data.cost ?? record.cost ?? 0,
-          notes: `Realizado por: ${data.performedBy ?? record.performedBy}. Tipo: ${data.type ?? record.type}`,
+          notes: `Realizado por: ${resolvedPerformedBy ?? record.performedBy}. Tipo: ${data.type ?? record.type}`,
         },
       });
     } else if (data.cost && data.cost > 0) {
@@ -124,7 +151,7 @@ export class EquipmentService {
           currency: 'CRC',
           category: 'MAINTENANCE',
           date: record.date,
-          notes: `Realizado por: ${data.performedBy ?? record.performedBy}. Tipo: ${data.type ?? record.type}`,
+          notes: `Realizado por: ${resolvedPerformedBy ?? record.performedBy}. Tipo: ${data.type ?? record.type}`,
         },
       });
     }
@@ -136,11 +163,20 @@ export class EquipmentService {
     type: 'ROUTINE' | 'REPAIR' | 'REPLACEMENT';
     description: string;
     cost?: number;
-    performedBy: string;
+    performedByUserId: string;
   }) {
     await this.findOne(gymId, equipmentId);
     const now = new Date();
     const eq = await this.prisma.equipment.findUnique({ where: { id: equipmentId } });
+    const performer = await this.prisma.user.findFirst({
+      where: { id: data.performedByUserId, gymId },
+      select: { id: true, firstName: true, lastName: true, email: true },
+    });
+    if (!performer) {
+      throw new NotFoundException('Usuario seleccionado para mantenimiento no encontrado');
+    }
+    const performedBy = `${performer.firstName} ${performer.lastName}`.trim();
+
     const nextMaintenance = new Date(now);
     nextMaintenance.setDate(nextMaintenance.getDate() + (eq?.maintenanceFrequencyDays ?? 30));
 
@@ -150,7 +186,7 @@ export class EquipmentService {
     });
 
     const record = await this.prisma.maintenanceRecord.create({
-      data: { gymId, equipmentId, type: data.type, description: data.description, cost: data.cost, performedBy: data.performedBy },
+      data: { gymId, equipmentId, type: data.type, description: data.description, cost: data.cost, performedBy },
     });
 
     // Auto-create expense if cost > 0
@@ -163,7 +199,7 @@ export class EquipmentService {
           currency: 'CRC',
           category: 'MAINTENANCE',
           date: now,
-          notes: `Realizado por: ${data.performedBy}. Tipo: ${data.type}`,
+          notes: `Realizado por: ${performedBy} (${performer.email}). Tipo: ${data.type}`,
         },
       });
     }

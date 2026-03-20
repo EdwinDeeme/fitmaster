@@ -64,6 +64,7 @@ model User {
   // Relations
   gym              Gym?      @relation(fields: [gymId], references: [id], onDelete: Cascade)
   createdRoutines  Routine[]
+  createdClients   Client[]
 
   @@index([gymId, email])
   @@index([email])
@@ -85,6 +86,7 @@ enum UserRole {
 model Client {
   id                 String       @id @default(uuid())
   gymId              String       @map("gym_id")
+  createdByUserId    String?      @map("created_by_user_id")
   firstName          String       @map("first_name")
   lastName           String       @map("last_name")
   email              String
@@ -105,6 +107,7 @@ model Client {
 
   // Relations
   gym                Gym                  @relation(fields: [gymId], references: [id], onDelete: Cascade)
+  creator            User?                @relation(fields: [createdByUserId], references: [id])
   memberships        Membership[]
   payments           Payment[]
   physicalProgress   PhysicalProgress[]
@@ -113,6 +116,7 @@ model Client {
 
   @@unique([gymId, email])
   @@index([gymId, status])
+  @@index([gymId, createdByUserId])
   @@map("clients")
 }
 
@@ -212,6 +216,7 @@ model Membership {
   endDate    DateTime         @map("end_date")
   status     MembershipStatus @default(ACTIVE)
   price      Decimal          @db.Decimal(10, 2)
+
   autoRenew  Boolean          @default(false) @map("auto_renew")
   createdAt  DateTime         @default(now()) @map("created_at")
   updatedAt  DateTime         @updatedAt @map("updated_at")

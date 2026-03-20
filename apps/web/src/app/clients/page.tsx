@@ -1,7 +1,8 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useSearchParams, usePathname, useRouter } from 'next/navigation';
 import { ProtectedRoute } from '@/components/auth/protected-route';
 import { DashboardLayout } from '@/components/layout/dashboard-layout';
 import { Button } from '@/components/ui/button';
@@ -16,17 +17,56 @@ import { ClientForm } from '@/components/clients/client-form';
 import { ClientFullForm } from '@/components/clients/client-full-form';
 import { ClientDetail } from '@/components/clients/client-detail';
 
+function extractShortId(ref: string | null, prefix: string) {
+  if (!ref) return null;
+  const pattern = new RegExp(`-${prefix}-([a-f0-9]{8})$`, 'i');
+  const match = ref.match(pattern);
+  return match?.[1]?.toLowerCase() ?? null;
+}
+
 export default function ClientsPage() {
   const qc = useQueryClient();
+  const router = useRouter();
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
   const [search, setSearch] = useState('');
   const [showCreate, setShowCreate] = useState(false);
   const [editClient, setEditClient] = useState<Client | null>(null);
   const [viewClient, setViewClient] = useState<Client | null>(null);
+  const openedFromQueryRef = useRef(false);
+  const clientRefFromQuery = searchParams.get('client');
+  const clientShortId = extractShortId(clientRefFromQuery, 'c');
 
   const { data: clients = [], isLoading } = useQuery({
     queryKey: ['clients'],
     queryFn: clientsService.getAll,
   });
+
+  useEffect(() => {
+    if (openedFromQueryRef.current || clients.length === 0) return;
+
+    const targetClient = clients.find((client) => {
+      if (clientShortId && client.id.toLowerCase().startsWith(clientShortId)) return true;
+      return false;
+    });
+
+    if (targetClient) {
+      setViewClient(targetClient);
+      openedFromQueryRef.current = true;
+    }
+  }, [clientShortId, clients]);
+
+  const closeClientModal = () => {
+    setViewClient(null);
+
+    if (!searchParams.get('client')) return;
+
+    const nextParams = new URLSearchParams(searchParams.toString());
+    nextParams.delete('client');
+    const nextQuery = nextParams.toString();
+
+    router.replace(nextQuery ? `${pathname}?${nextQuery}` : pathname, { scroll: false });
+  };
 
   const deleteMutation = useMutation({
     mutationFn: clientsService.delete,
@@ -139,7 +179,7 @@ export default function ClientsPage() {
           {editClient && <ClientForm client={editClient} onSuccess={() => { setEditClient(null); qc.invalidateQueries({ queryKey: ['clients'] }); }} onCancel={() => setEditClient(null)} />}
         </Modal>
 
-        <Modal open={!!viewClient} onClose={() => setViewClient(null)} title="Detalle del Cliente" size="md">
+        <Modal open={!!viewClient} onClose={closeClientModal} title="Detalle del Cliente" size="md">
           {viewClient && <ClientDetail clientId={viewClient.id} />}
         </Modal>
       </DashboardLayout>

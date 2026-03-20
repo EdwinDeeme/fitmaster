@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { useMutation } from '@tanstack/react-query';
+import { useMutation, useQuery } from '@tanstack/react-query';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -12,12 +12,32 @@ import { Equipment } from '@/types/gym';
 
 interface Props { equipment: Equipment; onSuccess: () => void; onCancel: () => void; }
 
+interface MaintenanceUser {
+  id: string;
+  firstName: string;
+  lastName: string;
+  email: string;
+  role: string;
+}
+
+const roleLabel: Record<string, string> = {
+  GYM_ADMIN: 'Gym Admin',
+  TRAINER: 'Entrenador',
+  RECEPTIONIST: 'Recepcionista',
+  CLIENT: 'Cliente',
+};
+
 export function MaintenanceForm({ equipment, onSuccess, onCancel }: Props) {
   const [type, setType]               = useState('');
   const [description, setDescription] = useState('');
   const [cost, setCost]               = useState('');
-  const [performedBy, setPerformedBy] = useState('');
+  const [performedByUserId, setPerformedByUserId] = useState('');
   const [error, setError]             = useState('');
+
+  const { data: users = [], isLoading: isLoadingUsers } = useQuery<MaintenanceUser[]>({
+    queryKey: ['equipment-maintenance-users'],
+    queryFn: equipmentService.getMaintenanceUsers,
+  });
 
   const mutation = useMutation({
     mutationFn: (data: any) => equipmentService.addMaintenance(equipment.id, data),
@@ -30,13 +50,13 @@ export function MaintenanceForm({ equipment, onSuccess, onCancel }: Props) {
     setError('');
     if (!type) return setError('Selecciona el tipo de mantenimiento');
     if (!description.trim()) return setError('La descripción es requerida');
-    if (!performedBy.trim()) return setError('El nombre del técnico es requerido');
+    if (!performedByUserId) return setError('Selecciona quién realizó el mantenimiento');
 
     mutation.mutate({
       type,
       description: description.trim(),
       cost: cost ? Number(cost) : undefined,
-      performedBy: performedBy.trim(),
+      performedByUserId,
     });
   };
 
@@ -70,7 +90,14 @@ export function MaintenanceForm({ equipment, onSuccess, onCancel }: Props) {
         </div>
         <div className="space-y-1.5">
           <Label>Realizado por *</Label>
-          <Input value={performedBy} onChange={e => setPerformedBy(e.target.value)} placeholder="Nombre del técnico" />
+          <Select value={performedByUserId} onChange={e => setPerformedByUserId(e.target.value)} disabled={isLoadingUsers}>
+            <option value="">{isLoadingUsers ? 'Cargando usuarios...' : 'Seleccionar usuario...'}</option>
+            {users.map((user) => (
+              <option key={user.id} value={user.id}>
+                {user.firstName} {user.lastName} · {roleLabel[user.role] || user.role}
+              </option>
+            ))}
+          </Select>
         </div>
       </div>
 

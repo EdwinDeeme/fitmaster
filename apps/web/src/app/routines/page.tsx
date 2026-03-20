@@ -1,7 +1,8 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
+import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { ProtectedRoute } from '@/components/auth/protected-route';
 import { DashboardLayout } from '@/components/layout/dashboard-layout';
 import { Button } from '@/components/ui/button';
@@ -15,6 +16,7 @@ import { Routine } from '@/types/routines';
 import { UserRole } from '@/types/auth';
 import { useAuth } from '@/contexts/auth.context';
 import { Plus, Dumbbell, Loader2 } from 'lucide-react';
+import { AnimatePresence } from 'framer-motion';
 
 type ModalState =
   | { type: 'none' }
@@ -23,10 +25,24 @@ type ModalState =
   | { type: 'edit'; routine: Routine }
   | { type: 'delete'; routine: Routine };
 
+function extractShortId(ref: string | null, prefix: string) {
+  if (!ref) return null;
+  const pattern = new RegExp(`-${prefix}-([a-f0-9]{8})$`, 'i');
+  const match = ref.match(pattern);
+  return match?.[1]?.toLowerCase() ?? null;
+}
+
 export default function RoutinesPage() {
   const { user } = useAuth();
+  const router = useRouter();
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
   const [filters, setFilters] = useState<RoutineFilters>({});
   const [modal, setModal] = useState<ModalState>({ type: 'none' });
+  const openedFromQueryRef = useRef(false);
+  const routineIdFromQuery = searchParams.get('routineId');
+  const routineRefFromQuery = searchParams.get('routine');
+  const routineShortId = extractShortId(routineRefFromQuery, 'r');
 
   const canEdit = user?.role === UserRole.GYM_ADMIN || user?.role === UserRole.TRAINER;
 
@@ -36,7 +52,33 @@ export default function RoutinesPage() {
     staleTime: 30_000,
   });
 
-  const closeModal = () => setModal({ type: 'none' });
+  useEffect(() => {
+    if (openedFromQueryRef.current || routines.length === 0) return;
+
+    const targetRoutine = routines.find((routine) => {
+      if (routineIdFromQuery && routine.id === routineIdFromQuery) return true;
+      if (routineShortId && routine.id.toLowerCase().startsWith(routineShortId)) return true;
+      return false;
+    });
+
+    if (targetRoutine) {
+      setModal({ type: 'view', routine: targetRoutine });
+      openedFromQueryRef.current = true;
+    }
+  }, [routineIdFromQuery, routineShortId, routines]);
+
+  const closeModal = () => {
+    setModal({ type: 'none' });
+
+    if (!searchParams.get('routine') && !searchParams.get('routineId')) return;
+
+    const nextParams = new URLSearchParams(searchParams.toString());
+    nextParams.delete('routine');
+    nextParams.delete('routineId');
+    const nextQuery = nextParams.toString();
+
+    router.replace(nextQuery ? `${pathname}?${nextQuery}` : pathname, { scroll: false });
+  };
 
   return (
     <ProtectedRoute allowedRoles={[UserRole.GYM_ADMIN, UserRole.TRAINER, UserRole.RECEPTIONIST]}>
@@ -108,27 +150,32 @@ export default function RoutinesPage() {
         </div>
 
         {/* Modals */}
-        {modal.type === 'view' && (
-          <RoutineDetailModal
-            routine={modal.routine}
-            onClose={closeModal}
-            onEdit={canEdit ? (r) => setModal({ type: 'edit', routine: r }) : undefined}
-          />
-        )}
-        {(modal.type === 'create' || modal.type === 'edit') && (
-          <RoutineFormModal
-            routine={modal.type === 'edit' ? modal.routine : undefined}
-            onClose={closeModal}
-            onSuccess={closeModal}
-          />
-        )}
-        {modal.type === 'delete' && (
-          <DeleteRoutineModal
-            routine={modal.routine}
-            onClose={closeModal}
-            onSuccess={closeModal}
-          />
-        )}
+        <AnimatePresence mode="wait" initial={false}>
+          {modal.type === 'view' && (
+            <RoutineDetailModal
+              key={`routine-view-${modal.routine.id}`}
+              routine={modal.routine}
+              onClose={closeModal}
+              onEdit={canEdit ? (r) => setModal({ type: 'edit', routine: r }) : undefined}
+            />
+          )}
+          {(modal.type === 'create' || modal.type === 'edit') && (
+            <RoutineFormModal
+              key={modal.type === 'edit' ? `routine-edit-${modal.routine.id}` : 'routine-create'}
+              routine={modal.type === 'edit' ? modal.routine : undefined}
+              onClose={closeModal}
+              onSuccess={closeModal}
+            />
+          )}
+          {modal.type === 'delete' && (
+            <DeleteRoutineModal
+              key={`routine-delete-${modal.routine.id}`}
+              routine={modal.routine}
+              onClose={closeModal}
+              onSuccess={closeModal}
+            />
+          )}
+        </AnimatePresence>
       </DashboardLayout>
     </ProtectedRoute>
   );

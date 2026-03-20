@@ -6,6 +6,10 @@ export const equipmentService = {
     const { data } = await api.get('/equipment/catalog');
     return data;
   },
+  getMaintenanceUsers: async () => {
+    const { data } = await api.get('/equipment/maintenance-users');
+    return data;
+  },
   getAll: async (): Promise<Equipment[]> => {
     const { data } = await api.get('/equipment');
     return data;

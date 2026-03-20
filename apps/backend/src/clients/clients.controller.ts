@@ -16,13 +16,13 @@ export class ClientsController {
   @Post()
   @Roles(UserRole.GYM_ADMIN, UserRole.RECEPTIONIST)
   create(@CurrentUser() user: TokenPayload, @Body() dto: CreateClientDto) {
-    return this.clientsService.create(user.gymId!, dto);
+    return this.clientsService.create(user.gymId!, user.userId, dto);
   }
 
   @Post('with-membership')
   @Roles(UserRole.GYM_ADMIN, UserRole.RECEPTIONIST)
   createFull(@CurrentUser() user: TokenPayload, @Body() dto: CreateClientFullDto) {
-    return this.clientsService.createFull(user.gymId!, dto);
+    return this.clientsService.createFull(user.gymId!, user.userId, dto);
   }
 
   @Get()

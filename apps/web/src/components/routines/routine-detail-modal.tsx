@@ -8,6 +8,7 @@ import { MarqueeText } from '@/components/ui/marquee-text';
 import { useQuery } from '@tanstack/react-query';
 import { equipmentService } from '@/services/equipment.service';
 import { Equipment } from '@/types/gym';
+import { motion, useReducedMotion } from 'framer-motion';
 
 const DAY_KEYS = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'];
 const DAY_ABBR = ['L', 'M', 'X', 'J', 'V', 'S', 'D'];
@@ -53,6 +54,7 @@ interface RoutineDetailModalProps {
 export function RoutineDetailModal({ routine, onClose, onEdit }: RoutineDetailModalProps) {
   const days = Object.entries(routine.weeklySchedule || {});
   const client = routine.assignments?.[0]?.client;
+  const prefersReducedMotion = useReducedMotion();
 
   const { data: equipment = [] } = useQuery<Equipment[]>({
     queryKey: ['equipment'],
@@ -60,8 +62,22 @@ export function RoutineDetailModal({ routine, onClose, onEdit }: RoutineDetailMo
   });
 
   return (
-    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center sm:p-4 bg-black/50">
-      <div className="bg-white rounded-t-2xl sm:rounded-2xl shadow-2xl w-full sm:max-w-2xl max-h-[95vh] flex flex-col">
+    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center sm:p-4">
+      <motion.div
+        className="absolute inset-0 bg-black/50"
+        onClick={onClose}
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        exit={{ opacity: 0 }}
+        transition={{ duration: prefersReducedMotion ? 0 : 0.18 }}
+      />
+      <motion.div
+        className="relative bg-white rounded-t-2xl sm:rounded-2xl shadow-2xl w-full sm:max-w-2xl max-h-[95vh] flex flex-col"
+        initial={prefersReducedMotion ? { opacity: 1 } : { opacity: 0, y: 22, scale: 0.985 }}
+        animate={prefersReducedMotion ? { opacity: 1 } : { opacity: 1, y: 0, scale: 1 }}
+        exit={prefersReducedMotion ? { opacity: 0 } : { opacity: 0, y: 16, scale: 0.99 }}
+        transition={{ duration: prefersReducedMotion ? 0 : 0.2, ease: [0.22, 1, 0.36, 1] }}
+      >
 
         {/* Header */}
         <div className="flex items-start justify-between p-6 border-b border-gray-100 shrink-0">
@@ -168,7 +184,7 @@ export function RoutineDetailModal({ routine, onClose, onEdit }: RoutineDetailMo
           </div>
         </div>
 
-      </div>
+      </motion.div>
     </div>
   );
 }

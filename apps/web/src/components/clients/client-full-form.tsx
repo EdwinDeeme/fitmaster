@@ -72,35 +72,51 @@ export function ClientFullForm({ onSuccess, onCancel }: Props) {
     queryFn: membershipPlansService.getAll,
   });
 
-  const clientForm  = useForm<ClientFields>();
+  const clientForm  = useForm<ClientFields>({
+    defaultValues: {
+      gender: 'MALE',
+      goalType: 'WEIGHT_LOSS',
+    },
+  });
   const paymentForm = useForm<PaymentFields>({ defaultValues: { method: 'CASH' } });
 
   const mutation = useMutation({
     mutationFn: async (payment: PaymentFields) => {
       if (!clientData || !selectedPlan) return;
       const endDate = computeEndDate(startDate, selectedPlan.type);
-      await api.post('/clients/with-membership', {
-        ...clientData,
-        weight: Number(clientData.weight),
-        height: Number(clientData.height),
-        membership: {
-          type:      selectedPlan.type,
-          startDate: new Date(startDate).toISOString(),
-          endDate:   new Date(endDate).toISOString(),
-          price:     Number(selectedPlan.price),
-          autoRenew: false,
-        },
-        payment: {
-          method: payment.method,
-          amount: Number(selectedPlan.price),
-        },
-      });
+      try {
+        await api.post('/clients/with-membership', {
+          ...clientData,
+          weight: Number(clientData.weight),
+          height: Number(clientData.height),
+          membership: {
+            type:      selectedPlan.type,
+            startDate: new Date(startDate).toISOString(),
+            endDate:   new Date(endDate).toISOString(),
+            price:     Number(selectedPlan.price),
+            autoRenew: false,
+          },
+          payment: {
+            method: payment.method,
+            amount: Number(selectedPlan.price),
+          },
+        });
+      } catch (error: any) {
+        console.error('Error creando cliente:', error.response?.data || error.message);
+        throw error;
+      }
     },
     onSuccess,
   });
 
   const handleClientNext = (data: ClientFields) => {
-    if (!dob) { setDobError(true); return; }
+    if (!dob) { 
+      setDobError(true); 
+      return; 
+    }
+    if (!data.firstName?.trim() || !data.lastName?.trim() || !data.email?.trim()) {
+      return;
+    }
     setDobError(false);
     setClientData({ ...data, dateOfBirth: dob.toISOString() });
     setStep('membership');
@@ -151,7 +167,14 @@ export function ClientFullForm({ onSuccess, onCancel }: Props) {
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-1">
               <Label>Email</Label>
-              <Input type="email" {...clientForm.register('email', { required: 'Requerido' })} />
+              <Input 
+                type="email" 
+                {...clientForm.register('email', { 
+                  required: 'Requerido',
+                  pattern: { value: /^[^\s@]+@[^\s@]+\.[^\s@]+$/, message: 'Email inválido' }
+                })} 
+              />
+              {clientForm.formState.errors.email && <p className="text-xs text-red-500">{clientForm.formState.errors.email.message}</p>}
             </div>
             <div className="space-y-1">
               <Label>Teléfono</Label>
@@ -177,32 +200,53 @@ export function ClientFullForm({ onSuccess, onCancel }: Props) {
             </div>
             <div className="space-y-1">
               <Label>Género</Label>
-              <Select {...clientForm.register('gender', { required: true })}>
+              <Select {...clientForm.register('gender', { required: 'Requerido' })}>
                 <option value="MALE">Masculino</option>
                 <option value="FEMALE">Femenino</option>
                 <option value="OTHER">Otro</option>
               </Select>
+              {clientForm.formState.errors.gender && <p className="text-xs text-red-500">{clientForm.formState.errors.gender.message}</p>}
             </div>
           </div>
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-1">
               <Label>Peso (kg)</Label>
-              <Input type="number" step="0.1" {...clientForm.register('weight', { required: true, min: 1 })} />
+              <Input 
+                type="number" 
+                step="0.1" 
+                {...clientForm.register('weight', { 
+                  required: 'Requerido',
+                  min: { value: 1, message: 'Mín. 1 kg' },
+                  max: { value: 500, message: 'Máx. 500 kg' },
+                  valueAsNumber: true
+                })} 
+              />
+              {clientForm.formState.errors.weight && <p className="text-xs text-red-500">{clientForm.formState.errors.weight.message}</p>}
             </div>
             <div className="space-y-1">
               <Label>Altura (cm)</Label>
-              <Input type="number" {...clientForm.register('height', { required: true, min: 1 })} />
+              <Input 
+                type="number" 
+                {...clientForm.register('height', { 
+                  required: 'Requerido',
+                  min: { value: 1, message: 'Mín. 1 cm' },
+                  max: { value: 300, message: 'Máx. 300 cm' },
+                  valueAsNumber: true
+                })} 
+              />
+              {clientForm.formState.errors.height && <p className="text-xs text-red-500">{clientForm.formState.errors.height.message}</p>}
             </div>
           </div>
           <div className="space-y-1">
             <Label>Objetivo</Label>
-            <Select {...clientForm.register('goalType', { required: true })}>
+            <Select {...clientForm.register('goalType', { required: 'Requerido' })}>
               <option value="WEIGHT_LOSS">Pérdida de peso</option>
               <option value="MUSCLE_GAIN">Ganancia muscular</option>
               <option value="MAINTENANCE">Mantenimiento</option>
               <option value="STRENGTH">Fuerza</option>
               <option value="ENDURANCE">Resistencia</option>
             </Select>
+            {clientForm.formState.errors.goalType && <p className="text-xs text-red-500">{clientForm.formState.errors.goalType.message}</p>}
           </div>
           <div className="flex justify-end gap-3 pt-2">
             <Button type="button" variant="outline" onClick={onCancel}>Cancelar</Button>

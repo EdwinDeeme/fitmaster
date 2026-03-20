@@ -1,7 +1,8 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useSearchParams } from 'next/navigation';
 import { ProtectedRoute } from '@/components/auth/protected-route';
 import { DashboardLayout } from '@/components/layout/dashboard-layout';
 import { Button } from '@/components/ui/button';
@@ -16,6 +17,7 @@ import { Plus, Search, Trash2, Wrench, Dumbbell, AlertTriangle, X, Pencil, Chevr
 import { EquipmentForm } from '@/components/equipment/equipment-form';
 import { MaintenanceForm } from '@/components/equipment/maintenance-form';
 import { useAuth } from '@/contexts/auth.context';
+import { AnimatePresence, motion, useReducedMotion } from 'framer-motion';
 
 const statusConfig: Record<string, { label: string; variant: any }> = {
   OPERATIONAL:    { label: 'Operativo',          variant: 'success'   },
@@ -31,10 +33,25 @@ const maintenanceTypeLabels: Record<string, string> = {
   ROUTINE: 'Rutinario', REPAIR: 'Reparación', REPLACEMENT: 'Reemplazo',
 };
 
+function extractShortId(ref: string | null, prefix: string) {
+  if (!ref) return null;
+  const pattern = new RegExp(`-${prefix}-([a-f0-9]{8})$`, 'i');
+  const match = ref.match(pattern);
+  return match?.[1]?.toLowerCase() ?? null;
+}
+
 export default function EquipmentPage() {
   const { user } = useAuth();
+  const searchParams = useSearchParams();
   const qc = useQueryClient();
   const isAdmin = user?.role === UserRole.GYM_ADMIN;
+  const openedFromQueryRef = useRef(false);
+  const equipmentIdFromQuery = searchParams.get('equipmentId');
+  const maintenanceIdFromQuery = searchParams.get('maintenanceId');
+  const equipmentRefFromQuery = searchParams.get('equipment');
+  const maintenanceRefFromQuery = searchParams.get('maintenance');
+  const equipmentShortId = extractShortId(equipmentRefFromQuery, 'e');
+  const maintenanceShortId = extractShortId(maintenanceRefFromQuery, 'm');
 
   const [search, setSearch]           = useState('');
   const [showCreate, setShowCreate]   = useState(false);
@@ -72,6 +89,21 @@ export default function EquipmentPage() {
   const needsMaintenance = equipment.filter(e =>
     e.nextMaintenance && new Date(e.nextMaintenance) <= new Date()
   );
+
+  useEffect(() => {
+    if (openedFromQueryRef.current || equipment.length === 0) return;
+
+    const targetEquipment = equipment.find((item) => {
+      if (equipmentIdFromQuery && item.id === equipmentIdFromQuery) return true;
+      if (equipmentShortId && item.id.toLowerCase().startsWith(equipmentShortId)) return true;
+      return false;
+    });
+
+    if (targetEquipment) {
+      setDetailEq(targetEquipment);
+      openedFromQueryRef.current = true;
+    }
+  }, [equipmentIdFromQuery, equipmentShortId, equipment]);
 
   return (
     <ProtectedRoute allowedRoles={[UserRole.GYM_ADMIN, UserRole.TRAINER]}>
@@ -169,19 +201,23 @@ export default function EquipmentPage() {
         </div>
 
         {/* Detail modal */}
-        {detailEq && (
-          <EquipmentDetailModal
-            equipment={detailFull ?? detailEq}
-            isAdmin={isAdmin}
-            onClose={() => setDetailEq(null)}
-            onEdit={() => { setEditEq(detailFull ?? detailEq); setDetailEq(null); }}
-            onMaintenance={() => { setMaintenanceEq(detailFull ?? detailEq); setDetailEq(null); }}
-            onDelete={() => {
-              if (confirm('¿Eliminar este equipo?')) deleteMutation.mutate(detailEq.id);
-            }}
-            onRefresh={() => qc.invalidateQueries({ queryKey: ['equipment', detailEq.id] })}
-          />
-        )}
+        <AnimatePresence initial={false}>
+          {detailEq && (
+            <EquipmentDetailModal
+              key={`equipment-detail-${detailEq.id}`}
+              equipment={detailFull ?? detailEq}
+              highlightMaintenanceId={maintenanceIdFromQuery ?? maintenanceShortId}
+              isAdmin={isAdmin}
+              onClose={() => setDetailEq(null)}
+              onEdit={() => { setEditEq(detailFull ?? detailEq); setDetailEq(null); }}
+              onMaintenance={() => { setMaintenanceEq(detailFull ?? detailEq); setDetailEq(null); }}
+              onDelete={() => {
+                if (confirm('¿Eliminar este equipo?')) deleteMutation.mutate(detailEq.id);
+              }}
+              onRefresh={() => qc.invalidateQueries({ queryKey: ['equipment', detailEq.id] })}
+            />
+          )}
+        </AnimatePresence>
 
         {/* Create modal */}
         <Modal open={showCreate} onClose={() => setShowCreate(false)} title="Agregar Equipo" size="md">
@@ -213,8 +249,9 @@ export default function EquipmentPage() {
 }
 
 // ── Equipment detail modal ──────────────────────────────────────────────────
-function EquipmentDetailModal({ equipment, isAdmin, onClose, onEdit, onMaintenance, onDelete, onRefresh }: {
+function EquipmentDetailModal({ equipment, highlightMaintenanceId, isAdmin, onClose, onEdit, onMaintenance, onDelete, onRefresh }: {
   equipment: Equipment & { maintenanceRecords?: any[] };
+  highlightMaintenanceId?: string | null;
   isAdmin: boolean;
   onClose: () => void;
   onEdit: () => void;
@@ -223,7 +260,41 @@ function EquipmentDetailModal({ equipment, isAdmin, onClose, onEdit, onMaintenan
   onRefresh: () => void;
 }) {
   const records = equipment.maintenanceRecords ?? [];
+  const prefersReducedMotion = useReducedMotion();
   const [editingRecord, setEditingRecord] = useState<any | null>(null);
+  const [highlightedRecordId, setHighlightedRecordId] = useState<string | null>(null);
+  const { data: maintenanceUsers = [] } = useQuery({
+    queryKey: ['equipment-maintenance-users'],
+    queryFn: equipmentService.getMaintenanceUsers,
+  });
+
+  useEffect(() => {
+    if (!highlightMaintenanceId) return;
+
+    const normalizedRef = highlightMaintenanceId.toLowerCase();
+    const targetRecord = records.find((record: any) => {
+      const recordId = String(record.id).toLowerCase();
+      return recordId === normalizedRef || recordId.startsWith(normalizedRef);
+    });
+
+    if (!targetRecord) return;
+
+    setHighlightedRecordId(targetRecord.id);
+
+    const timeoutId = setTimeout(() => {
+      setHighlightedRecordId(null);
+    }, 3200);
+
+    const scrollId = requestAnimationFrame(() => {
+      const node = document.getElementById(`maintenance-record-${targetRecord.id}`);
+      node?.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+    });
+
+    return () => {
+      clearTimeout(timeoutId);
+      cancelAnimationFrame(scrollId);
+    };
+  }, [highlightMaintenanceId, records]);
 
   function isSameDay(dateStr: string) {
     const d = new Date(dateStr);
@@ -232,8 +303,22 @@ function EquipmentDetailModal({ equipment, isAdmin, onClose, onEdit, onMaintenan
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center sm:p-4 bg-black/50">
-      <div className="bg-white rounded-t-2xl sm:rounded-2xl shadow-2xl w-full sm:max-w-lg max-h-[95vh] flex flex-col">
+    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center sm:p-4">
+      <motion.div
+        className="absolute inset-0 bg-black/50"
+        onClick={onClose}
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        exit={{ opacity: 0 }}
+        transition={{ duration: prefersReducedMotion ? 0 : 0.18 }}
+      />
+      <motion.div
+        className="relative bg-white rounded-t-2xl sm:rounded-2xl shadow-2xl w-full sm:max-w-lg max-h-[95vh] flex flex-col"
+        initial={prefersReducedMotion ? { opacity: 1 } : { opacity: 0, y: 22, scale: 0.985 }}
+        animate={prefersReducedMotion ? { opacity: 1 } : { opacity: 1, y: 0, scale: 1 }}
+        exit={prefersReducedMotion ? { opacity: 0 } : { opacity: 0, y: 16, scale: 0.99 }}
+        transition={{ duration: prefersReducedMotion ? 0 : 0.2, ease: [0.22, 1, 0.36, 1] }}
+      >
 
         {/* Header */}
         <div className="flex items-start justify-between p-6 border-b border-gray-100 shrink-0">
@@ -333,17 +418,27 @@ function EquipmentDetailModal({ equipment, isAdmin, onClose, onEdit, onMaintenan
                 <span className="text-xs text-gray-300">Sin registros de mantenimiento</span>
               </div>
             ) : (
-              <div className="space-y-2">
+              <div className={records.length > 3 ? 'space-y-2 max-h-[260px] overflow-y-auto pr-1 pl-1 py-1 soft-scroll' : 'space-y-2'}>
                 {records.map((r: any) => (
-                  <div key={r.id}>
+                  <div
+                    key={r.id}
+                    id={`maintenance-record-${r.id}`}
+                  >
                     {editingRecord?.id === r.id ? (
                       <MaintenanceRecordEditForm
                         record={r}
+                        users={maintenanceUsers}
                         onSave={() => { setEditingRecord(null); onRefresh(); }}
                         onCancel={() => setEditingRecord(null)}
                       />
                     ) : (
-                      <div className="bg-bone rounded-xl p-3 space-y-1">
+                      <div
+                        className={`rounded-xl p-3 space-y-1 transition-all duration-500 ${
+                          highlightedRecordId === r.id
+                            ? 'bg-primary/10 border border-primary-active/50 shadow-sm'
+                            : 'bg-bone border border-transparent'
+                        }`}
+                      >
                         <div className="flex items-center justify-between gap-2">
                           <span className="text-xs font-semibold text-dark">
                             {maintenanceTypeLabels[r.type] ?? r.type}
@@ -382,27 +477,48 @@ function EquipmentDetailModal({ equipment, isAdmin, onClose, onEdit, onMaintenan
             </Button>
           )}
         </div>
-      </div>
+      </motion.div>
     </div>
   );
 }
 
-function MaintenanceRecordEditForm({ record, onSave, onCancel }: {
-  record: any; onSave: () => void; onCancel: () => void;
+function MaintenanceRecordEditForm({ record, users, onSave, onCancel }: {
+  record: any;
+  users: Array<{ id: string; firstName: string; lastName: string; email: string; role: string }>;
+  onSave: () => void;
+  onCancel: () => void;
 }) {
+  const matchedUser = users.find((u) => {
+    const fullName = `${u.firstName} ${u.lastName}`.trim().toLowerCase();
+    const performedBy = String(record.performedBy || '').trim().toLowerCase();
+    return fullName === performedBy || u.email.trim().toLowerCase() === performedBy;
+  });
+
   const [type, setType]               = useState(record.type);
   const [description, setDescription] = useState(record.description);
   const [cost, setCost]               = useState(record.cost ? String(record.cost) : '');
-  const [performedBy, setPerformedBy] = useState(record.performedBy);
+  const [performedByUserId, setPerformedByUserId] = useState(matchedUser?.id ?? '');
   const [error, setError]             = useState('');
 
   const mutation = useMutation({
     mutationFn: () => equipmentService.updateMaintenance(record.id, {
-      type, description, cost: cost ? Number(cost) : 0, performedBy,
+      type,
+      description,
+      cost: cost ? Number(cost) : 0,
+      performedByUserId,
     }),
     onSuccess: onSave,
     onError: () => setError('Error al guardar los cambios.'),
   });
+
+  const handleSave = () => {
+    setError('');
+    if (!performedByUserId) {
+      setError('Selecciona el usuario que realizó el mantenimiento.');
+      return;
+    }
+    mutation.mutate();
+  };
 
   return (
     <div className="bg-white border border-primary/30 rounded-xl p-3 space-y-2">
@@ -421,14 +537,20 @@ function MaintenanceRecordEditForm({ record, onSave, onCancel }: {
       <div className="grid grid-cols-[1fr_1fr_auto] gap-2 items-center">
         <Input type="number" min={0} value={cost} onChange={e => setCost(e.target.value)}
           placeholder="Costo (₡)" className="h-9 text-sm" />
-        <Input value={performedBy} onChange={e => setPerformedBy(e.target.value)}
-          placeholder="Realizado por" className="h-9 text-sm" />
+        <Select value={performedByUserId} onChange={e => setPerformedByUserId(e.target.value)}>
+          <option value="">Seleccionar usuario...</option>
+          {users.map((u) => (
+            <option key={u.id} value={u.id}>
+              {u.firstName} {u.lastName}
+            </option>
+          ))}
+        </Select>
         <div className="flex gap-1">
           <button type="button" onClick={onCancel}
             className="p-2 rounded-lg border border-gray-200 hover:bg-bone transition-colors" aria-label="Cancelar">
             <X className="h-4 w-4 text-gray-400" />
           </button>
-          <button type="button" onClick={() => mutation.mutate()} disabled={mutation.isPending}
+          <button type="button" onClick={handleSave} disabled={mutation.isPending}
             className="p-2 rounded-lg bg-primary hover:bg-primary-hover transition-colors disabled:opacity-50" aria-label="Guardar">
             <Check className="h-4 w-4 text-dark" />
           </button>

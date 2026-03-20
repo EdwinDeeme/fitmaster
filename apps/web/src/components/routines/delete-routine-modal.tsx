@@ -5,6 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Trash2, Loader2 } from 'lucide-react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { routinesService } from '@/services/routines.service';
+import { motion, useReducedMotion } from 'framer-motion';
 
 interface DeleteRoutineModalProps {
   routine: Routine;
@@ -14,6 +15,7 @@ interface DeleteRoutineModalProps {
 
 export function DeleteRoutineModal({ routine, onClose, onSuccess }: DeleteRoutineModalProps) {
   const queryClient = useQueryClient();
+  const prefersReducedMotion = useReducedMotion();
 
   const mutation = useMutation({
     mutationFn: () => routinesService.remove(routine.id),
@@ -24,8 +26,22 @@ export function DeleteRoutineModal({ routine, onClose, onSuccess }: DeleteRoutin
   });
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50">
-      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-sm p-6 space-y-5">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+      <motion.div
+        className="absolute inset-0 bg-black/50"
+        onClick={onClose}
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        exit={{ opacity: 0 }}
+        transition={{ duration: prefersReducedMotion ? 0 : 0.18 }}
+      />
+      <motion.div
+        className="relative bg-white rounded-2xl shadow-2xl w-full max-w-sm p-6 space-y-5"
+        initial={prefersReducedMotion ? { opacity: 1 } : { opacity: 0, y: 16, scale: 0.985 }}
+        animate={prefersReducedMotion ? { opacity: 1 } : { opacity: 1, y: 0, scale: 1 }}
+        exit={prefersReducedMotion ? { opacity: 0 } : { opacity: 0, y: 12, scale: 0.99 }}
+        transition={{ duration: prefersReducedMotion ? 0 : 0.2, ease: [0.22, 1, 0.36, 1] }}
+      >
         <div className="flex items-center justify-center w-14 h-14 rounded-full bg-red-100 mx-auto">
           <Trash2 className="h-7 w-7 text-red-600" />
         </div>
@@ -68,7 +84,7 @@ export function DeleteRoutineModal({ routine, onClose, onSuccess }: DeleteRoutin
             Eliminar
           </Button>
         </div>
-      </div>
+      </motion.div>
     </div>
   );
 }

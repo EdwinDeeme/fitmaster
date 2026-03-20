@@ -6,6 +6,7 @@ import { X } from 'lucide-react';
 import { useState } from 'react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { routinesService } from '@/services/routines.service';
+import { motion, useReducedMotion } from 'framer-motion';
 
 interface RoutineFormModalProps {
   routine?: Routine; // if provided, edit mode
@@ -16,6 +17,7 @@ interface RoutineFormModalProps {
 export function RoutineFormModal({ routine, onClose, onSuccess }: RoutineFormModalProps) {
   const queryClient = useQueryClient();
   const isEdit = !!routine;
+  const prefersReducedMotion = useReducedMotion();
 
   const [headerTitle, setHeaderTitle] = useState(isEdit ? 'Editar rutina' : 'Nueva rutina');
   const [headerSubtitle, setHeaderSubtitle] = useState(
@@ -48,8 +50,22 @@ export function RoutineFormModal({ routine, onClose, onSuccess }: RoutineFormMod
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center sm:p-4 bg-black/50">
-      <div className="bg-white rounded-t-2xl sm:rounded-2xl shadow-2xl w-full sm:max-w-2xl max-h-[95vh] flex flex-col">
+    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center sm:p-4">
+      <motion.div
+        className="absolute inset-0 bg-black/50"
+        onClick={onClose}
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        exit={{ opacity: 0 }}
+        transition={{ duration: prefersReducedMotion ? 0 : 0.18 }}
+      />
+      <motion.div
+        className="relative bg-white rounded-t-2xl sm:rounded-2xl shadow-2xl w-full sm:max-w-2xl max-h-[95vh] flex flex-col"
+        initial={prefersReducedMotion ? { opacity: 1 } : { opacity: 0, y: 22, scale: 0.985 }}
+        animate={prefersReducedMotion ? { opacity: 1 } : { opacity: 1, y: 0, scale: 1 }}
+        exit={prefersReducedMotion ? { opacity: 0 } : { opacity: 0, y: 16, scale: 0.99 }}
+        transition={{ duration: prefersReducedMotion ? 0 : 0.2, ease: [0.22, 1, 0.36, 1] }}
+      >
         {/* Header */}
         <div className="flex items-center justify-between p-6 border-b border-gray-100 shrink-0">
           <div>
@@ -99,7 +115,7 @@ export function RoutineFormModal({ routine, onClose, onSuccess }: RoutineFormMod
             }}
           />
         </div>
-      </div>
+      </motion.div>
     </div>
   );
 }

@@ -147,4 +147,48 @@ export interface StaffMember {
   firstName: string;
   lastName: string;
   createdAt: string;
+  metrics?: {
+    routinesCreated: number;
+    activeAssignedClients: number;
+    maintenancePerformed: number;
+    clientsCreated: number;
+  };
+}
+
+export interface StaffRoutineActivity {
+  id: string;
+  name: string;
+  difficulty: DifficultyLevel;
+  targetGoal: GoalType;
+  createdAt: string;
+  _count?: { assignments: number };
+}
+
+export interface StaffMaintenanceActivity {
+  id: string;
+  date: string;
+  type: 'ROUTINE' | 'REPAIR' | 'REPLACEMENT';
+  description: string;
+  cost?: number;
+  equipment: { id: string; name: string };
+}
+
+export interface StaffClientActivity {
+  id: string;
+  firstName: string;
+  lastName: string;
+  email: string;
+  weight: number;
+  height: number;
+  bmi: number;
+  dateOfBirth: string;
+  createdAt: string;
+}
+
+export interface StaffMemberDetail extends StaffMember {
+  activity: {
+    routines: StaffRoutineActivity[];
+    maintenance: StaffMaintenanceActivity[];
+    clients: StaffClientActivity[];
+  };
 }

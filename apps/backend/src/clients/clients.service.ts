@@ -6,7 +6,7 @@ import { CreateClientDto, UpdateClientDto, CreateClientFullDto } from './dto';
 export class ClientsService {
   constructor(private prisma: PrismaService) {}
 
-  async create(gymId: string, dto: CreateClientDto) {
+  async create(gymId: string, userId: string, dto: CreateClientDto) {
     const existing = await this.prisma.client.findUnique({
       where: { gymId_email: { gymId, email: dto.email } },
     });
@@ -19,6 +19,7 @@ export class ClientsService {
     return this.prisma.client.create({
       data: {
         gymId,
+        createdByUserId: userId,
         firstName: dto.firstName,
         lastName: dto.lastName,
         email: dto.email,
@@ -88,7 +89,7 @@ export class ClientsService {
     return this.prisma.client.delete({ where: { id } });
   }
 
-  async createFull(gymId: string, dto: CreateClientFullDto) {
+  async createFull(gymId: string, userId: string, dto: CreateClientFullDto) {
     const existing = await this.prisma.client.findUnique({
       where: { gymId_email: { gymId, email: dto.email } },
     });
@@ -102,6 +103,7 @@ export class ClientsService {
       const client = await tx.client.create({
         data: {
           gymId,
+          createdByUserId: userId,
           firstName: dto.firstName,
           lastName: dto.lastName,
           email: dto.email,
