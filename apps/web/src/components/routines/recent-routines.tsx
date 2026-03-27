@@ -15,6 +15,10 @@ export function RecentRoutines({ limit = 5 }: RecentRoutinesProps) {
   const { data: routines = [], isLoading } = useQuery({
     queryKey: ['routines-recent', limit],
     queryFn: () => routinesService.getRecent(limit),
+    refetchInterval: 60_000,
+    refetchIntervalInBackground: false,
+    refetchOnWindowFocus: true,
+    staleTime: 0,
   });
 
   if (isLoading) {

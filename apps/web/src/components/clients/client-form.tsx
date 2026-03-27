@@ -12,7 +12,7 @@ import { Select } from '@/components/ui/select';
 import { clientsService } from '@/services/clients.service';
 import { membershipsService } from '@/services/memberships.service';
 import { membershipPlansService, MembershipPlan } from '@/services/membership-plans.service';
-import { PlanSelector } from '@/components/memberships/plan-selector';
+import { PlanSelector, SelectedPlan } from '@/components/memberships/plan-selector';
 import { Client } from '@/types/gym';
 import { User, CreditCard, CheckCircle2 } from 'lucide-react';
 import { api } from '@/lib/api';
@@ -24,11 +24,6 @@ interface Props {
 }
 
 type Step = 'client' | 'membership';
-
-const membershipLabels: Record<string, string> = { MONTHLY: 'Mensual', QUARTERLY: 'Trimestral', ANNUAL: 'Anual' };
-
-
-const TYPE_ORDER: Record<string, number> = { MONTHLY: 1, QUARTERLY: 2, ANNUAL: 3 };
 
 function computeEndDate(startDate: string, type: string) {
   const d = new Date(startDate);
@@ -45,7 +40,7 @@ export function ClientForm({ client, onSuccess, onCancel }: Props) {
   );
 
   const [step, setStep]                 = useState<Step>('client');
-  const [selectedPlan, setSelectedPlan] = useState<MembershipPlan | null>(null);
+  const [selectedPlan, setSelectedPlan] = useState<SelectedPlan | null>(null);
   const [planError, setPlanError]       = useState(false);
   const [upgradeError, setUpgradeError] = useState('');
   const [startDate, setStartDate]       = useState(new Date().toISOString().split('T')[0]);
@@ -97,22 +92,28 @@ export function ClientForm({ client, onSuccess, onCancel }: Props) {
   const upgradeMutation = useMutation({
     mutationFn: async (method: string) => {
       if (!selectedPlan) return;
-      const endDate = computeEndDate(startDate, selectedPlan.type);
+      const endDate = computeEndDate(startDate, selectedPlan.selectedType);
       // Deactivate old membership
       if (activeMembership) {
         await membershipsService.updateStatus(activeMembership.id, 'CANCELLED');
       }
       // Create new membership + payment
       await api.post('/memberships', {
-        clientId:  client.id,
-        type:      selectedPlan.type,
-        startDate: new Date(startDate).toISOString(),
-        endDate:   new Date(endDate).toISOString(),
-        price:     Number(selectedPlan.price),
-        autoRenew: false,
+        clientId:         client.id,
+        membershipPlanId: selectedPlan.id,
+        type:             selectedPlan.selectedType,
+        startDate:        new Date(startDate).toISOString(),
+        endDate:          new Date(endDate).toISOString(),
+        price:            selectedPlan.selectedPrice,
+        autoRenew:        false,
       });
     },
-    onSuccess,
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['membership-plans'] });
+      qc.invalidateQueries({ queryKey: ['gym-metrics'] });
+      qc.invalidateQueries({ queryKey: ['recent-activity'] });
+      onSuccess();
+    },
   });
 
   const handleClientSubmit = (data: any) => {
@@ -121,13 +122,13 @@ export function ClientForm({ client, onSuccess, onCancel }: Props) {
     clientMutation.mutate({ ...data, dateOfBirth: dob.toISOString() });
   };
 
-  const handlePlanSelect = (plan: MembershipPlan) => {
+  const handlePlanSelect = (plan: SelectedPlan) => {
     setUpgradeError('');
     if (activeMembership) {
-      const currentOrder = TYPE_ORDER[activeMembership.type] ?? 0;
-      const newOrder     = TYPE_ORDER[plan.type] ?? 0;
-      if (newOrder <= currentOrder) {
-        setUpgradeError(`Solo puedes cambiar a un plan superior. Plan actual: ${membershipLabels[activeMembership.type] ?? activeMembership.type}`);
+      const currentPrice = Number(activeMembership.price);
+      const newPrice     = plan.selectedPrice;
+      if (newPrice <= currentPrice) {
+        setUpgradeError(`Solo puedes cambiar a un plan con mayor precio. Plan actual: ₡${currentPrice.toLocaleString('es-CR')}`);
         setSelectedPlan(null);
         return;
       }
@@ -136,11 +137,12 @@ export function ClientForm({ client, onSuccess, onCancel }: Props) {
     setPlanError(false);
   };
 
+  const [paymentMethod, setPaymentMethod] = useState('CASH');
+
   const handleUpgradeSubmit = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     if (!selectedPlan) { setPlanError(true); return; }
-    const method = (e.currentTarget.elements.namedItem('method') as HTMLSelectElement).value;
-    upgradeMutation.mutate(method);
+    upgradeMutation.mutate(paymentMethod);
   };
 
   const STEPS = [
@@ -264,15 +266,7 @@ export function ClientForm({ client, onSuccess, onCancel }: Props) {
               <Button type="submit" disabled={clientMutation.isPending}>
                 {clientMutation.isPending ? 'Guardando...' : 'Guardar cambios'}
               </Button>
-              <Button type="button" variant="outline" onClick={() => {
-                // Save first then go to membership
-                handleSubmit(data => {
-                  if (!dob) { setDobError(true); return; }
-                  clientMutation.mutate({ ...data, dateOfBirth: dob.toISOString() }, {
-                    onSuccess: () => setStep('membership'),
-                  });
-                })();
-              }}>
+              <Button type="button" variant="outline" onClick={() => setStep('membership')}>
                 Cambiar membresía →
               </Button>
             </div>
@@ -287,7 +281,9 @@ export function ClientForm({ client, onSuccess, onCancel }: Props) {
             <div className="p-3 bg-bone rounded-xl text-sm space-y-1">
               <p className="text-xs text-gray-500 font-medium uppercase tracking-wide">Membresía actual</p>
               <div className="flex justify-between">
-                <span className="text-dark font-medium">{membershipLabels[activeMembership.type] ?? activeMembership.type}</span>
+                <span className="text-dark font-medium">
+                  {{ MONTHLY: 'Mensual', QUARTERLY: 'Trimestral', ANNUAL: 'Anual', COMBINED: 'Combinado' }[activeMembership.type] ?? activeMembership.type}
+                </span>
                 <span className="font-bold text-dark">₡{Number(activeMembership.price).toLocaleString('es-CR')}</span>
               </div>
               <p className="text-xs text-gray-400">
@@ -318,7 +314,7 @@ export function ClientForm({ client, onSuccess, onCancel }: Props) {
             <>
               <div className="space-y-1">
                 <Label>Método de pago</Label>
-                <Select name="method" defaultValue="CASH">
+                <Select value={paymentMethod} onChange={e => setPaymentMethod(e.target.value)}>
                   <option value="CASH">Efectivo</option>
                   <option value="SINPE_MOVIL">SINPE Móvil</option>
                   <option value="CREDIT_CARD">Tarjeta de crédito</option>
@@ -328,7 +324,7 @@ export function ClientForm({ client, onSuccess, onCancel }: Props) {
               <div className="space-y-1">
                 <Label>Monto a cobrar</Label>
                 <div className="h-12 px-4 flex items-center rounded-lg border border-gray-100 bg-bone text-sm font-semibold text-dark">
-                  ₡{Number(selectedPlan.price).toLocaleString('es-CR')}
+                  ₡{Number(selectedPlan.selectedPrice).toLocaleString('es-CR')}
                 </div>
               </div>
             </>

@@ -72,7 +72,10 @@ export default function ClientsPage() {
 
   const deleteMutation = useMutation({
     mutationFn: clientsService.delete,
-    onSuccess: () => qc.invalidateQueries({ queryKey: ['clients'] }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['clients'] });
+      qc.invalidateQueries({ queryKey: ['gym-metrics'] });
+    },
   });
 
   const filtered = clients.filter(c =>
@@ -174,7 +177,7 @@ export default function ClientsPage() {
 
         {/* Modals */}
         <Modal open={showCreate} onClose={() => setShowCreate(false)} title="Nuevo Cliente" size="lg">
-          <ClientFullForm onSuccess={() => { setShowCreate(false); qc.invalidateQueries({ queryKey: ['clients'] }); qc.invalidateQueries({ queryKey: ['client'] }); }} onCancel={() => setShowCreate(false)} />
+          <ClientFullForm onSuccess={() => { setShowCreate(false); qc.invalidateQueries({ queryKey: ['clients'] }); qc.invalidateQueries({ queryKey: ['client'] }); qc.invalidateQueries({ queryKey: ['gym-metrics'] }); qc.invalidateQueries({ queryKey: ['recent-activity'] }); }} onCancel={() => setShowCreate(false)} />
         </Modal>
 
         <Modal open={!!editClient} onClose={() => setEditClient(null)} title="Editar Cliente" size="lg">

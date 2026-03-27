@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { useForm } from 'react-hook-form';
-import { useMutation, useQuery } from '@tanstack/react-query';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import DatePicker from 'react-datepicker';
 import 'react-datepicker/dist/react-datepicker.css';
 import { Button } from '@/components/ui/button';
@@ -13,7 +13,7 @@ import { api } from '@/lib/api';
 import { clientsService } from '@/services/clients.service';
 import { CheckCircle2, User, CreditCard, Banknote } from 'lucide-react';
 import { membershipPlansService, MembershipPlan } from '@/services/membership-plans.service';
-import { PlanSelector } from '@/components/memberships/plan-selector';
+import { PlanSelector, SelectedPlan } from '@/components/memberships/plan-selector';
 
 interface Props {
   onSuccess: () => void;
@@ -66,9 +66,10 @@ interface PaymentFields {
 }
 
 export function ClientFullForm({ onSuccess, onCancel }: Props) {
+  const qc = useQueryClient();
   const [step, setStep]                 = useState<Step>('client');
   const [clientData, setClientData]     = useState<ClientFields & { dateOfBirth: string } | null>(null);
-  const [selectedPlan, setSelectedPlan] = useState<MembershipPlan | null>(null);
+  const [selectedPlan, setSelectedPlan] = useState<SelectedPlan | null>(null);
   const [startDate, setStartDate]       = useState(new Date().toISOString().split('T')[0]);
   const [planError, setPlanError]       = useState(false);
   const [dob, setDob]                   = useState<Date | null>(null);
@@ -92,7 +93,7 @@ export function ClientFullForm({ onSuccess, onCancel }: Props) {
   const mutation = useMutation({
     mutationFn: async (payment: PaymentFields) => {
       if (!clientData || !selectedPlan) return;
-      const endDate = computeEndDate(startDate, selectedPlan.type);
+      const endDate = computeEndDate(startDate, selectedPlan.selectedType);
       try {
         const result = await api.post('/clients/with-membership', {
           firstName: clientData.firstName,
@@ -106,15 +107,16 @@ export function ClientFullForm({ onSuccess, onCancel }: Props) {
           bodyFatPercentage: clientData.bodyFatPercentage || undefined,
           goalType: clientData.goalType,
           membership: {
-            type:      selectedPlan.type,
+            membershipPlanId: selectedPlan.id,
+            type:      selectedPlan.selectedType,
             startDate: new Date(startDate).toISOString(),
             endDate:   new Date(endDate).toISOString(),
-            price:     Number(selectedPlan.price),
+            price:     selectedPlan.selectedPrice,
             autoRenew: false,
           },
           payment: {
             method: payment.method,
-            amount: Number(selectedPlan.price),
+            amount: selectedPlan.selectedPrice,
           },
         });
 
@@ -141,7 +143,12 @@ export function ClientFullForm({ onSuccess, onCancel }: Props) {
         throw error;
       }
     },
-    onSuccess,
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['membership-plans'] });
+      qc.invalidateQueries({ queryKey: ['gym-metrics'] });
+      qc.invalidateQueries({ queryKey: ['recent-activity'] });
+      onSuccess();
+    },
   });
 
   const handleClientNext = (data: ClientFields) => {
@@ -349,7 +356,7 @@ export function ClientFullForm({ onSuccess, onCancel }: Props) {
                 <p className="font-semibold text-white">{selectedPlan.name}</p>
                 {selectedPlan.description && <p className="text-gray-300 text-xs mt-0.5">{selectedPlan.description}</p>}
               </div>
-              <p className="text-2xl font-bold text-primary">₡{Number(selectedPlan.price).toLocaleString('es-CR')}</p>
+              <p className="text-2xl font-bold text-primary">₡{Number(selectedPlan.selectedPrice).toLocaleString('es-CR')}</p>
             </div>
           )}
           <div className="space-y-1">
@@ -364,7 +371,7 @@ export function ClientFullForm({ onSuccess, onCancel }: Props) {
           <div className="space-y-1">
             <Label>Monto a cobrar</Label>
             <div className="h-12 px-4 flex items-center rounded-lg border border-gray-100 bg-bone text-sm font-semibold text-dark">
-              ₡{selectedPlan ? Number(selectedPlan.price).toLocaleString('es-CR') : '0'}
+              ₡{selectedPlan ? Number(selectedPlan.selectedPrice).toLocaleString('es-CR') : '0'}
             </div>
           </div>
           {mutation.isError && (

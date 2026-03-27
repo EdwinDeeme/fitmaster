@@ -30,15 +30,18 @@ export function RoutineFormModal({ routine, onClose, onSuccess }: RoutineFormMod
         ? await routinesService.update(routine!.id, data)
         : await routinesService.create(data);
 
-      // Auto-assign to client if selected during creation
+      const previousClientId = routine?.assignments?.[0]?.clientId;
+      const assignmentId     = routine?.assignments?.[0]?.id;
+      const clientChanged    = isEdit && clientId !== previousClientId;
+
       if (!isEdit && clientId) {
+        // New routine: assign to client
         await routinesService.assign(result.id, {
           clientId,
           startDate: new Date().toISOString().split('T')[0],
         });
 
-        // Auto-log initial weights for exercises that have a weight defined
-        // Exercise notes field stores "weight|equipmentId"
+        // Auto-log initial weights
         const exercisesWithWeight = Object.values(data.weeklySchedule)
           .flatMap((day: any) => day.exercises ?? [])
           .filter((ex: any) => {
@@ -47,7 +50,6 @@ export function RoutineFormModal({ routine, onClose, onSuccess }: RoutineFormMod
             return w && !isNaN(parseFloat(w)) && parseFloat(w) > 0;
           });
 
-        // Deduplicate by name
         const seen = new Set<string>();
         for (const ex of exercisesWithWeight) {
           if (seen.has(ex.name)) continue;
@@ -63,11 +65,26 @@ export function RoutineFormModal({ routine, onClose, onSuccess }: RoutineFormMod
             notes: 'Peso inicial',
           });
         }
+      } else if (clientChanged) {
+        // Edit mode: client changed — unassign previous if any
+        if (assignmentId) {
+          await routinesService.unassign(assignmentId);
+        }
+        // Assign new client if one was selected
+        if (clientId) {
+          await routinesService.assign(result.id, {
+            clientId,
+            startDate: new Date().toISOString().split('T')[0],
+          });
+        }
       }
+
       return result;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['routines'] });
+      queryClient.invalidateQueries({ queryKey: ['routines-recent'] });
+      queryClient.invalidateQueries({ queryKey: ['recent-activity'] });
       onSuccess();
     },
   });

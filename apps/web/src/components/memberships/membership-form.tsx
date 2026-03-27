@@ -2,14 +2,14 @@
 
 import { useState } from 'react';
 import { useForm } from 'react-hook-form';
-import { useMutation, useQuery } from '@tanstack/react-query';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select } from '@/components/ui/select';
 import { membershipsService } from '@/services/memberships.service';
 import { membershipPlansService, MembershipPlan } from '@/services/membership-plans.service';
-import { PlanSelector } from './plan-selector';
+import { PlanSelector, SelectedPlan } from './plan-selector';
 import { Client } from '@/types/gym';
 
 interface Props {
@@ -27,7 +27,8 @@ function computeEndDate(startDate: string, type: string) {
 }
 
 export function MembershipForm({ clients, onSuccess, onCancel }: Props) {
-  const [selectedPlan, setSelectedPlan] = useState<MembershipPlan | null>(null);
+  const qc = useQueryClient();
+  const [selectedPlan, setSelectedPlan] = useState<SelectedPlan | null>(null);
   const [planError, setPlanError]       = useState(false);
 
   const { data: plans = [] } = useQuery({
@@ -50,16 +51,22 @@ export function MembershipForm({ clients, onSuccess, onCancel }: Props) {
     mutationFn: (data: any) => {
       if (!selectedPlan) { setPlanError(true); throw new Error('Plan requerido'); }
       return membershipsService.create({
-        clientId:      data.clientId,
-        type:          selectedPlan.type,
-        startDate:     new Date(data.startDate).toISOString(),
-        endDate:       new Date(computeEndDate(data.startDate, selectedPlan.type)).toISOString(),
-        price:         Number(selectedPlan.price),
-        autoRenew:     data.autoRenew,
-        promotionCode: data.promotionCode || undefined,
+        clientId:         data.clientId,
+        membershipPlanId: selectedPlan.id,
+        type:             selectedPlan.selectedType,
+        startDate:        new Date(data.startDate).toISOString(),
+        endDate:          new Date(computeEndDate(data.startDate, selectedPlan.selectedType)).toISOString(),
+        price:            selectedPlan.selectedPrice,
+        autoRenew:        data.autoRenew,
+        promotionCode:    data.promotionCode || undefined,
       });
     },
-    onSuccess,
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['membership-plans'] });
+      qc.invalidateQueries({ queryKey: ['gym-metrics'] });
+      qc.invalidateQueries({ queryKey: ['recent-activity'] });
+      onSuccess();
+    },
   });
 
   return (

@@ -11,7 +11,7 @@ import {
 } from 'lucide-react';
 import { useQuery } from '@tanstack/react-query';
 import { dashboardService } from '@/services/dashboard.service';
-import { RecentRoutines } from '@/components/routines/recent-routines';
+import { RecentActivity } from '@/components/dashboard/recent-activity';
 
 export default function DashboardPage() {
   const { user } = useAuth();
@@ -20,12 +20,20 @@ export default function DashboardPage() {
     queryKey: ['gym-metrics'],
     queryFn: dashboardService.getGymMetrics,
     enabled: user?.role === UserRole.GYM_ADMIN || user?.role === UserRole.RECEPTIONIST,
+    refetchInterval: 60_000,
+    refetchIntervalInBackground: false,
+    refetchOnWindowFocus: true,
+    staleTime: 0,
   });
 
   const { data: trainerMetrics, isLoading: trainerMetricsLoading } = useQuery({
     queryKey: ['trainer-metrics'],
     queryFn: dashboardService.getTrainerMetrics,
     enabled: user?.role === UserRole.TRAINER,
+    refetchInterval: 60_000,
+    refetchIntervalInBackground: false,
+    refetchOnWindowFocus: true,
+    staleTime: 0,
   });
 
   const getRoleInfo = () => {
@@ -205,7 +213,7 @@ export default function DashboardPage() {
                 </div>
               </CardHeader>
               <CardContent className="pt-4 sm:pt-6">
-                <RecentRoutines limit={5} />
+                <RecentActivity />
               </CardContent>
             </Card>
 

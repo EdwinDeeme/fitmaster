@@ -4,6 +4,10 @@ import { MembershipType, PaymentMethod } from '@prisma/client';
 import { CreateClientDto } from './create-client.dto';
 
 export class MembershipDataDto {
+  @IsOptional()
+  @IsString()
+  membershipPlanId?: string;
+
   @IsEnum(MembershipType)
   type: MembershipType;
 

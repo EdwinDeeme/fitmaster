@@ -187,6 +187,7 @@ export class ClientsService {
         data: {
           gymId,
           clientId: client.id,
+          membershipPlanId: dto.membership.membershipPlanId ?? null,
           type: dto.membership.type,
           startDate: new Date(dto.membership.startDate),
           endDate: new Date(dto.membership.endDate),
