@@ -39,6 +39,7 @@ model Gym {
   subscription       Subscription?
   expenses           Expense[]
   membershipPlans    MembershipPlan[]
+  exerciseLogs       ExerciseLog[]
 
   @@map("gyms")
 }
@@ -113,6 +114,7 @@ model Client {
   physicalProgress   PhysicalProgress[]
   progressPhotos     ProgressPhoto[]
   routineAssignments RoutineAssignment[]
+  exerciseLogs       ExerciseLog[]
 
   @@unique([gymId, email])
   @@index([gymId, status])
@@ -157,6 +159,33 @@ model PhysicalProgress {
 
   @@index([gymId, clientId, date])
   @@map("physical_progress")
+}
+
+// ============================================
+// EXERCISE LOGS (weight tracking per exercise)
+// ============================================
+
+model ExerciseLog {
+  id           String   @id @default(uuid())
+  gymId        String   @map("gym_id")
+  clientId     String   @map("client_id")
+  routineId    String   @map("routine_id")
+  exerciseName String   @map("exercise_name")
+  date         DateTime @default(now())
+  sets         Int
+  reps         String   // can be "8" or "8-12"
+  weightKg     Float    @map("weight_kg")
+  notes        String?
+  weekNumber   Int?     @map("week_number")
+  createdAt    DateTime @default(now()) @map("created_at")
+
+  gym     Gym     @relation(fields: [gymId], references: [id], onDelete: Cascade)
+  client  Client  @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  routine Routine @relation(fields: [routineId], references: [id], onDelete: Cascade)
+
+  @@index([gymId, clientId, routineId, exerciseName])
+  @@index([gymId, clientId, date])
+  @@map("exercise_logs")
 }
 
 model ProgressPhoto {
@@ -303,6 +332,7 @@ model Routine {
   gym         Gym                 @relation(fields: [gymId], references: [id], onDelete: Cascade)
   creator     User                @relation(fields: [createdBy], references: [id])
   assignments RoutineAssignment[]
+  exerciseLogs ExerciseLog[]
 
   @@index([gymId])
   @@map("routines")

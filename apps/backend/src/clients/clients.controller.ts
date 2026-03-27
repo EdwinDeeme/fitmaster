@@ -1,6 +1,6 @@
 import { Controller, Get, Post, Body, Patch, Param, Delete, UseGuards } from '@nestjs/common';
 import { ClientsService } from './clients.service';
-import { CreateClientDto, UpdateClientDto, CreateClientFullDto } from './dto';
+import { CreateClientDto, UpdateClientDto, CreateClientFullDto, CreateProgressDto, UpdateGoalDto } from './dto';
 import { Roles } from '../auth/decorators/roles.decorator';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
 import { TokenPayload } from '../auth/interfaces';
@@ -47,5 +47,23 @@ export class ClientsController {
   @Roles(UserRole.GYM_ADMIN)
   remove(@CurrentUser() user: TokenPayload, @Param('id') id: string) {
     return this.clientsService.remove(user.gymId!, id);
+  }
+
+  @Post(':id/progress')
+  @Roles(UserRole.GYM_ADMIN, UserRole.TRAINER)
+  addProgress(@CurrentUser() user: TokenPayload, @Param('id') id: string, @Body() dto: CreateProgressDto) {
+    return this.clientsService.addProgress(user.gymId!, id, dto);
+  }
+
+  @Get(':id/progress')
+  @Roles(UserRole.GYM_ADMIN, UserRole.TRAINER, UserRole.RECEPTIONIST)
+  getProgress(@CurrentUser() user: TokenPayload, @Param('id') id: string) {
+    return this.clientsService.getProgress(user.gymId!, id);
+  }
+
+  @Patch(':id/goal')
+  @Roles(UserRole.GYM_ADMIN, UserRole.TRAINER)
+  updateGoal(@CurrentUser() user: TokenPayload, @Param('id') id: string, @Body() dto: UpdateGoalDto) {
+    return this.clientsService.updateGoal(user.gymId!, id, dto);
   }
 }

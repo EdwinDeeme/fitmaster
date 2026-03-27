@@ -12,7 +12,7 @@ import {
 } from '@nestjs/common';
 import { ApiTags, ApiBearerAuth, ApiOperation } from '@nestjs/swagger';
 import { RoutinesService } from './routines.service';
-import { CreateRoutineDto, UpdateRoutineDto, AssignRoutineDto } from './dto';
+import { CreateRoutineDto, UpdateRoutineDto, AssignRoutineDto, CreateExerciseLogDto } from './dto';
 import { Roles } from '../auth/decorators/roles.decorator';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
 
@@ -104,10 +104,41 @@ export class RoutinesController {
     @Query('limit') limit?: string,
   ) {
     const userId = user.role === 'TRAINER' ? user.userId : undefined;
-    return this.routinesService.getRecentRoutines(
-      user.gymId, 
-      userId, 
-      limit ? parseInt(limit) : 5
-    );
+    return this.routinesService.getRecentRoutines(user.gymId, userId, limit ? parseInt(limit) : 5);
+  }
+
+  // ─── Exercise Logs ────────────────────────────────────────────────────────
+
+  @Post('clients/:clientId/routines/:routineId/logs')
+  @Roles('GYM_ADMIN', 'TRAINER')
+  @ApiOperation({ summary: 'Log exercise weight for a client' })
+  logExercise(
+    @CurrentUser() user: any,
+    @Param('clientId') clientId: string,
+    @Param('routineId') routineId: string,
+    @Body() dto: CreateExerciseLogDto,
+  ) {
+    return this.routinesService.logExercise(user.gymId, clientId, routineId, dto);
+  }
+
+  @Get('clients/:clientId/routines/:routineId/logs')
+  @Roles('GYM_ADMIN', 'TRAINER', 'RECEPTIONIST')
+  @ApiOperation({ summary: 'Get exercise logs grouped by exercise name' })
+  getExerciseLogs(
+    @CurrentUser() user: any,
+    @Param('clientId') clientId: string,
+    @Param('routineId') routineId: string,
+  ) {
+    return this.routinesService.getExerciseLogs(user.gymId, clientId, routineId);
+  }
+
+  @Get('clients/:clientId/logs')
+  @Roles('GYM_ADMIN', 'TRAINER', 'RECEPTIONIST')
+  @ApiOperation({ summary: 'Get all exercise logs for a client' })
+  getExerciseLogsByClient(
+    @CurrentUser() user: any,
+    @Param('clientId') clientId: string,
+  ) {
+    return this.routinesService.getExerciseLogsByClient(user.gymId, clientId);
   }
 }

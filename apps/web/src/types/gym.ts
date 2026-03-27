@@ -30,6 +30,8 @@ export interface Client {
   status: ClientStatus;
   createdAt: string;
   memberships?: Membership[];
+  physicalProgress?: PhysicalProgress[];
+  routineAssignments?: RoutineAssignment[];
   _count?: { routineAssignments: number };
 }
 
@@ -110,7 +112,24 @@ export interface RoutineAssignment {
   startDate: string;
   isActive: boolean;
   client?: Pick<Client, 'id' | 'firstName' | 'lastName' | 'email'>;
-  routine?: Pick<Routine, 'id' | 'name' | 'difficulty'>;
+  routine?: Pick<Routine, 'id' | 'name' | 'difficulty' | 'targetGoal' | 'durationWeeks'>;
+}
+
+export interface PhysicalProgress {
+  id: string;
+  clientId: string;
+  date: string;
+  weight: number;
+  bodyFatPercentage?: number;
+  measurements?: {
+    chest?: number;
+    waist?: number;
+    hips?: number;
+    arms?: number;
+    thighs?: number;
+  };
+  notes?: string;
+  createdAt: string;
 }
 
 export interface Equipment {

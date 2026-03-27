@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useSearchParams, useRouter } from 'next/navigation';
 import { ProtectedRoute } from '@/components/auth/protected-route';
 import { DashboardLayout } from '@/components/layout/dashboard-layout';
 import { Button } from '@/components/ui/button';
@@ -16,7 +17,7 @@ import { UserRole } from '@/types/auth';
 import { Payment, Expense } from '@/types/gym';
 import {
   TrendingUp, TrendingDown, DollarSign, Plus, Printer, Trash2,
-  ArrowUpCircle, ArrowDownCircle, X,
+  ArrowUpCircle, ArrowDownCircle, X, User,
 } from 'lucide-react';
 import { ConfirmDialog } from '@/components/ui/confirm-dialog';
 import { PaymentForm } from '@/components/finances/payment-form';
@@ -136,6 +137,10 @@ function ExpenseDetail({ expense, onClose, onDelete }: {
 // ─── Page ─────────────────────────────────────────────────────────────────────
 export default function FinancesPage() {
   const qc = useQueryClient();
+  const router = useRouter();
+  const searchParams = useSearchParams();
+  const clientIdFilter = searchParams.get('clientId');
+
   const now = new Date();
   const [month, setMonth] = useState(now.getMonth() + 1);
   const [year, setYear] = useState(now.getFullYear());
@@ -151,10 +156,28 @@ export default function FinancesPage() {
     queryKey: ['finances-summary', month, year],
     queryFn: () => financesService.getSummary(month, year),
   });
+
+  // When filtering by client, fetch all their payments (not month-restricted)
+  const { data: clientPayments = [], isLoading: clientPaymentsLoading } = useQuery({
+    queryKey: ['finances-payments-client', clientIdFilter],
+    queryFn: () => financesService.getPayments({ clientId: clientIdFilter! }),
+    enabled: !!clientIdFilter,
+  });
+
   const { data: clients = [] } = useQuery({ queryKey: ['clients'], queryFn: clientsService.getAll });
   const { data: memberships = [] } = useQuery({ queryKey: ['memberships'], queryFn: membershipsService.getAll });
 
   const invalidate = () => qc.invalidateQueries({ queryKey: ['finances-summary'] });
+
+  const allPayments = summary?.payments ?? [];
+  const filteredPayments = clientIdFilter ? clientPayments : allPayments;
+  const isPaymentsLoading = clientIdFilter ? clientPaymentsLoading : isLoading;
+
+  const filteredClient = clientIdFilter ? clients.find(c => c.id === clientIdFilter) : null;
+
+  const clearClientFilter = () => {
+    router.replace('/finances');
+  };
 
   const deletePayment = useMutation({
     mutationFn: financesService.deletePayment,
@@ -201,6 +224,25 @@ export default function FinancesPage() {
             </div>
           </div>
 
+          {/* Client filter banner */}
+          {clientIdFilter && (
+            <div className="flex items-center gap-3 bg-primary/10 border border-primary/30 rounded-2xl px-4 py-3">
+              <User className="h-4 w-4 text-primary shrink-0" />
+              <div className="flex-1 min-w-0">
+                <p className="text-sm font-semibold text-dark">
+                  Filtrando por cliente{filteredClient ? `: ${filteredClient.firstName} ${filteredClient.lastName}` : ''}
+                </p>
+                <p className="text-xs text-gray-500">
+                  {filteredPayments.length} pago{filteredPayments.length !== 1 ? 's' : ''} en total
+                </p>
+              </div>
+              <button onClick={clearClientFilter}
+                className="p-1.5 rounded-lg hover:bg-primary/20 transition-colors shrink-0">
+                <X className="h-4 w-4 text-dark" />
+              </button>
+            </div>
+          )}
+
           {/* Summary Cards */}
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <Card className="border-none shadow-sm bg-gradient-to-br from-green-50 to-white">
@@ -246,7 +288,11 @@ export default function FinancesPage() {
             <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
               <div className="px-4 py-3 border-b border-gray-100 flex items-center gap-2">
                 <ArrowUpCircle className="h-4 w-4 text-green-600" />
-                <span className="font-semibold text-dark">Ingresos — {MONTHS[month - 1]} {year}</span>
+                <span className="font-semibold text-dark">
+                  {clientIdFilter && filteredClient
+                    ? `Todos los pagos — ${filteredClient.firstName} ${filteredClient.lastName}`
+                    : `Ingresos — ${MONTHS[month - 1]} ${year}`}
+                </span>
               </div>
               <div className="overflow-x-auto">
                 <table className="w-full">
@@ -259,11 +305,13 @@ export default function FinancesPage() {
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-gray-50">
-                    {isLoading
+                    {isPaymentsLoading
                       ? <tr><td colSpan={4} className="px-4 py-6 text-center text-gray-400">Cargando...</td></tr>
-                      : (summary?.payments ?? []).length === 0
-                        ? <tr><td colSpan={4} className="px-4 py-6 text-center text-gray-400">Sin ingresos este mes</td></tr>
-                        : (summary?.payments ?? []).map(p => (
+                      : (filteredPayments).length === 0
+                        ? <tr><td colSpan={4} className="px-4 py-6 text-center text-gray-400">
+                            {clientIdFilter ? 'Sin pagos para este cliente en el período seleccionado' : 'Sin ingresos este mes'}
+                          </td></tr>
+                        : (filteredPayments).map(p => (
                           <tr key={p.id} onClick={() => setSelectedPayment(p)} className="hover:bg-bone/50 cursor-pointer transition-colors">
                             <td className="px-4 py-3 text-sm hidden sm:table-cell">{new Date(p.createdAt).toLocaleDateString('es-CR')}</td>
                             <td className="px-4 py-3 text-sm">
@@ -281,8 +329,8 @@ export default function FinancesPage() {
             </div>
           )}
 
-          {/* Expenses Table */}
-          {(tab === 'overview' || tab === 'expenses') && (
+          {/* Expenses Table — hidden when filtering by client */}
+          {!clientIdFilter && (tab === 'overview' || tab === 'expenses') && (
             <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
               <div className="px-4 py-3 border-b border-gray-100 flex items-center gap-2">
                 <ArrowDownCircle className="h-4 w-4 text-red-500" />

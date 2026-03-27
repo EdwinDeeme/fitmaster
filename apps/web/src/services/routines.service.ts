@@ -1,5 +1,5 @@
 import { api } from '@/lib/api';
-import { Routine, CreateRoutineData, AssignRoutineData } from '@/types/routines';
+import { Routine, CreateRoutineData, AssignRoutineData, ExerciseLog } from '@/types/routines';
 
 export interface RoutineFilters {
   difficulty?: string;
@@ -48,6 +48,24 @@ export const routinesService = {
 
   getRecent: async (limit = 5): Promise<Routine[]> => {
     const response = await api.get('/routines/recent', { params: { limit } });
+    return response.data;
+  },
+
+  logExercise: async (clientId: string, routineId: string, dto: {
+    exerciseName: string;
+    sets: number;
+    reps: string;
+    weightKg: number;
+    weekNumber?: number;
+    notes?: string;
+    date?: string;
+  }) => {
+    const response = await api.post(`/routines/clients/${clientId}/routines/${routineId}/logs`, dto);
+    return response.data;
+  },
+
+  getExerciseLogs: async (clientId: string, routineId: string): Promise<Record<string, ExerciseLog[]>> => {
+    const response = await api.get(`/routines/clients/${clientId}/routines/${routineId}/logs`);
     return response.data;
   },
 };

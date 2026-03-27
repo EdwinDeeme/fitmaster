@@ -33,6 +33,7 @@ export default function ClientsPage() {
   const [showCreate, setShowCreate] = useState(false);
   const [editClient, setEditClient] = useState<Client | null>(null);
   const [viewClient, setViewClient] = useState<Client | null>(null);
+  const [clientTracking, setClientTracking] = useState(false);
   const openedFromQueryRef = useRef(false);
   const clientRefFromQuery = searchParams.get('client');
   const clientShortId = extractShortId(clientRefFromQuery, 'c');
@@ -58,6 +59,7 @@ export default function ClientsPage() {
 
   const closeClientModal = () => {
     setViewClient(null);
+    setClientTracking(false);
 
     if (!searchParams.get('client')) return;
 
@@ -158,8 +160,8 @@ export default function ClientsPage() {
                       <td className="px-4 py-3 hidden sm:table-cell">{statusBadge(client.status)}</td>
                       <td className="px-4 py-3" onClick={e => e.stopPropagation()}>
                         <div className="flex items-center gap-1">
-                          <button onClick={() => setEditClient(client)} className="p-1.5 rounded-lg hover:bg-primary/10 text-primary transition-colors"><Edit2 className="h-4 w-4" /></button>
-                          <button onClick={() => { if (confirm('¿Eliminar cliente?')) deleteMutation.mutate(client.id); }} className="p-1.5 rounded-lg hover:bg-red-50 text-red-500 transition-colors"><Trash2 className="h-4 w-4" /></button>
+                          <button onClick={() => setEditClient(client)} className="p-1.5 rounded-lg hover:bg-primary/10 text-primary transition-colors" title="Editar"><Edit2 className="h-4 w-4" /></button>
+                          <button onClick={() => { if (confirm('¿Eliminar cliente?')) deleteMutation.mutate(client.id); }} className="p-1.5 rounded-lg hover:bg-red-50 text-red-500 transition-colors" title="Eliminar"><Trash2 className="h-4 w-4" /></button>
                         </div>
                       </td>
                     </tr>
@@ -172,15 +174,19 @@ export default function ClientsPage() {
 
         {/* Modals */}
         <Modal open={showCreate} onClose={() => setShowCreate(false)} title="Nuevo Cliente" size="lg">
-          <ClientFullForm onSuccess={() => { setShowCreate(false); qc.invalidateQueries({ queryKey: ['clients'] }); }} onCancel={() => setShowCreate(false)} />
+          <ClientFullForm onSuccess={() => { setShowCreate(false); qc.invalidateQueries({ queryKey: ['clients'] }); qc.invalidateQueries({ queryKey: ['client'] }); }} onCancel={() => setShowCreate(false)} />
         </Modal>
 
         <Modal open={!!editClient} onClose={() => setEditClient(null)} title="Editar Cliente" size="lg">
-          {editClient && <ClientForm client={editClient} onSuccess={() => { setEditClient(null); qc.invalidateQueries({ queryKey: ['clients'] }); }} onCancel={() => setEditClient(null)} />}
+          {editClient && <ClientForm client={editClient} onSuccess={() => {
+            setEditClient(null);
+            qc.invalidateQueries({ queryKey: ['clients'] });
+            qc.invalidateQueries({ queryKey: ['client', editClient.id] });
+          }} onCancel={() => setEditClient(null)} />}
         </Modal>
 
-        <Modal open={!!viewClient} onClose={closeClientModal} title="Detalle del Cliente" size="md">
-          {viewClient && <ClientDetail clientId={viewClient.id} />}
+        <Modal open={!!viewClient} onClose={closeClientModal} title="Detalle del Cliente" size={clientTracking ? 'xl' : 'md'}>
+          {viewClient && <ClientDetail clientId={viewClient.id} onTrackingChange={setClientTracking} />}
         </Modal>
       </DashboardLayout>
     </ProtectedRoute>

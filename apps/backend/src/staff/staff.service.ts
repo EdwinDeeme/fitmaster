@@ -201,10 +201,7 @@ export class StaffService {
         take: 10,
       }),
       this.prisma.client.findMany({
-        where: {
-          gymId,
-          createdByUserId: user.id,
-        },
+        where: { gymId },
         select: {
           id: true,
           firstName: true,

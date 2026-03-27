@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { useForm } from 'react-hook-form';
-import { useMutation, useQuery } from '@tanstack/react-query';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import DatePicker from 'react-datepicker';
 import 'react-datepicker/dist/react-datepicker.css';
 import { Button } from '@/components/ui/button';
@@ -39,6 +39,7 @@ function computeEndDate(startDate: string, type: string) {
 }
 
 export function ClientForm({ client, onSuccess, onCancel }: Props) {
+  const qc = useQueryClient();
   const activeMembership = client.memberships?.find(
     m => m.status === 'ACTIVE' || m.status === 'EXPIRING_SOON',
   );
@@ -85,7 +86,11 @@ export function ClientForm({ client, onSuccess, onCancel }: Props) {
       }
       return clientsService.update(client.id, clean);
     },
-    onSuccess,
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['client', client.id] });
+      qc.invalidateQueries({ queryKey: ['clients'] });
+      onSuccess();
+    },
   });
 
   // Step 2: upgrade membership + payment
@@ -206,11 +211,12 @@ export function ClientForm({ client, onSuccess, onCancel }: Props) {
             </div>
             <div className="space-y-1">
               <Label>Género</Label>
-              <Select {...register('gender', { required: true })}>
+              <select {...register('gender', { required: true })}
+                className="w-full h-12 px-4 rounded-lg border border-gray-200 text-sm text-dark bg-white focus:outline-none focus:ring-2 focus:ring-primary">
                 <option value="MALE">Masculino</option>
                 <option value="FEMALE">Femenino</option>
                 <option value="OTHER">Otro</option>
-              </Select>
+              </select>
             </div>
           </div>
           <div className="grid grid-cols-3 gap-4">
@@ -230,21 +236,23 @@ export function ClientForm({ client, onSuccess, onCancel }: Props) {
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-1">
               <Label>Objetivo</Label>
-              <Select {...register('goalType', { required: true })}>
+              <select {...register('goalType', { required: true })}
+                className="w-full h-12 px-4 rounded-lg border border-gray-200 text-sm text-dark bg-white focus:outline-none focus:ring-2 focus:ring-primary">
                 <option value="WEIGHT_LOSS">Pérdida de peso</option>
                 <option value="MUSCLE_GAIN">Ganancia muscular</option>
                 <option value="MAINTENANCE">Mantenimiento</option>
                 <option value="STRENGTH">Fuerza</option>
                 <option value="ENDURANCE">Resistencia</option>
-              </Select>
+              </select>
             </div>
             <div className="space-y-1">
               <Label>Estado</Label>
-              <Select {...register('status')}>
+              <select {...register('status')}
+                className="w-full h-12 px-4 rounded-lg border border-gray-200 text-sm text-dark bg-white focus:outline-none focus:ring-2 focus:ring-primary">
                 <option value="ACTIVE">Activo</option>
                 <option value="SUSPENDED">Suspendido</option>
                 <option value="INACTIVE">Inactivo</option>
-              </Select>
+              </select>
             </div>
           </div>
           {clientMutation.isError && (
@@ -253,11 +261,19 @@ export function ClientForm({ client, onSuccess, onCancel }: Props) {
           <div className="flex justify-between gap-3 pt-2">
             <Button type="button" variant="outline" onClick={onCancel}>Cancelar</Button>
             <div className="flex gap-2">
-              <Button type="submit" variant="outline" disabled={clientMutation.isPending}>
-                {clientMutation.isPending ? 'Guardando...' : 'Guardar datos'}
+              <Button type="submit" disabled={clientMutation.isPending}>
+                {clientMutation.isPending ? 'Guardando...' : 'Guardar cambios'}
               </Button>
-              <Button type="button" onClick={() => setStep('membership')}>
-                Membresía →
+              <Button type="button" variant="outline" onClick={() => {
+                // Save first then go to membership
+                handleSubmit(data => {
+                  if (!dob) { setDobError(true); return; }
+                  clientMutation.mutate({ ...data, dateOfBirth: dob.toISOString() }, {
+                    onSuccess: () => setStep('membership'),
+                  });
+                })();
+              }}>
+                Cambiar membresía →
               </Button>
             </div>
           </div>

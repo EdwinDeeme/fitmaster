@@ -8,6 +8,7 @@ import { PrismaService } from '../prisma/prisma.service';
 import { CreateRoutineDto } from './dto/create-routine.dto';
 import { UpdateRoutineDto } from './dto/update-routine.dto';
 import { AssignRoutineDto } from './dto/assign-routine.dto';
+import { CreateExerciseLogDto } from './dto/exercise-log.dto';
 
 @Injectable()
 export class RoutinesService {
@@ -196,12 +197,7 @@ export class RoutinesService {
 
   async getRecentRoutines(gymId: string, userId?: string, limit = 5) {
     const where: any = { gymId };
-    
-    // If userId provided (trainer), filter by their routines
-    if (userId) {
-      where.createdBy = userId;
-    }
-
+    if (userId) where.createdBy = userId;
     return this.prisma.routine.findMany({
       where,
       include: {
@@ -209,15 +205,69 @@ export class RoutinesService {
         assignments: {
           where: { isActive: true },
           include: {
-            client: {
-              select: { id: true, firstName: true, lastName: true, email: true, weight: true, height: true, bmi: true, dateOfBirth: true },
-            },
+            client: { select: { id: true, firstName: true, lastName: true, email: true, weight: true, height: true, bmi: true, dateOfBirth: true } },
           },
           take: 1,
         },
       },
       orderBy: { updatedAt: 'desc' },
       take: limit,
+    });
+  }
+
+  // ─── Exercise Logs ────────────────────────────────────────────────────────
+
+  async logExercise(gymId: string, clientId: string, routineId: string, dto: CreateExerciseLogDto) {
+    // Validate client and routine belong to gym
+    const [client, routine] = await Promise.all([
+      this.prisma.client.findFirst({ where: { id: clientId, gymId } }),
+      this.prisma.routine.findFirst({ where: { id: routineId, gymId } }),
+    ]);
+    if (!client) throw new NotFoundException('Cliente no encontrado');
+    if (!routine) throw new NotFoundException('Rutina no encontrada');
+
+    return this.prisma.exerciseLog.create({
+      data: {
+        gymId,
+        clientId,
+        routineId,
+        exerciseName: dto.exerciseName,
+        date: dto.date ? new Date(dto.date) : new Date(),
+        sets: dto.sets,
+        reps: dto.reps,
+        weightKg: dto.weightKg,
+        weekNumber: dto.weekNumber,
+        notes: dto.notes,
+      },
+    });
+  }
+
+  async getExerciseLogs(gymId: string, clientId: string, routineId: string) {
+    const client = await this.prisma.client.findFirst({ where: { id: clientId, gymId } });
+    if (!client) throw new NotFoundException('Cliente no encontrado');
+
+    const logs = await this.prisma.exerciseLog.findMany({
+      where: { gymId, clientId, routineId },
+      orderBy: [{ exerciseName: 'asc' }, { date: 'asc' }],
+    });
+
+    // Group by exercise name for easy frontend consumption
+    const grouped: Record<string, typeof logs> = {};
+    for (const log of logs) {
+      if (!grouped[log.exerciseName]) grouped[log.exerciseName] = [];
+      grouped[log.exerciseName].push(log);
+    }
+    return grouped;
+  }
+
+  async getExerciseLogsByClient(gymId: string, clientId: string) {
+    const client = await this.prisma.client.findFirst({ where: { id: clientId, gymId } });
+    if (!client) throw new NotFoundException('Cliente no encontrado');
+
+    return this.prisma.exerciseLog.findMany({
+      where: { gymId, clientId },
+      orderBy: { date: 'desc' },
+      take: 50,
     });
   }
 }

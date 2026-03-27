@@ -10,6 +10,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select } from '@/components/ui/select';
 import { api } from '@/lib/api';
+import { clientsService } from '@/services/clients.service';
 import { CheckCircle2, User, CreditCard, Banknote } from 'lucide-react';
 import { membershipPlansService, MembershipPlan } from '@/services/membership-plans.service';
 import { PlanSelector } from '@/components/memberships/plan-selector';
@@ -49,7 +50,15 @@ interface ClientFields {
   gender: 'MALE' | 'FEMALE' | 'OTHER';
   weight: number;
   height: number;
+  bodyFatPercentage?: number;
   goalType: 'WEIGHT_LOSS' | 'MUSCLE_GAIN' | 'MAINTENANCE' | 'STRENGTH' | 'ENDURANCE';
+  measurements?: {
+    waist?: number;
+    chest?: number;
+    arms?: number;
+    hips?: number;
+    thighs?: number;
+  };
 }
 
 interface PaymentFields {
@@ -85,10 +94,17 @@ export function ClientFullForm({ onSuccess, onCancel }: Props) {
       if (!clientData || !selectedPlan) return;
       const endDate = computeEndDate(startDate, selectedPlan.type);
       try {
-        await api.post('/clients/with-membership', {
-          ...clientData,
+        const result = await api.post('/clients/with-membership', {
+          firstName: clientData.firstName,
+          lastName: clientData.lastName,
+          email: clientData.email,
+          phone: clientData.phone,
+          dateOfBirth: clientData.dateOfBirth,
+          gender: clientData.gender,
           weight: Number(clientData.weight),
           height: Number(clientData.height),
+          bodyFatPercentage: clientData.bodyFatPercentage || undefined,
+          goalType: clientData.goalType,
           membership: {
             type:      selectedPlan.type,
             startDate: new Date(startDate).toISOString(),
@@ -101,6 +117,25 @@ export function ClientFullForm({ onSuccess, onCancel }: Props) {
             amount: Number(selectedPlan.price),
           },
         });
+
+        // Auto-create first progress record with initial measurements
+        const clientId = result.data?.client?.id;
+        if (clientId) {
+          const hasMeasurements = clientData.measurements &&
+            Object.values(clientData.measurements).some(v => v && !isNaN(Number(v)));
+          await clientsService.addProgress(clientId, {
+            weight: Number(clientData.weight),
+            bodyFatPercentage: clientData.bodyFatPercentage || undefined,
+            measurements: hasMeasurements ? {
+              waist:  clientData.measurements?.waist  ? Number(clientData.measurements.waist)  : undefined,
+              chest:  clientData.measurements?.chest  ? Number(clientData.measurements.chest)  : undefined,
+              arms:   clientData.measurements?.arms   ? Number(clientData.measurements.arms)   : undefined,
+              hips:   clientData.measurements?.hips   ? Number(clientData.measurements.hips)   : undefined,
+              thighs: clientData.measurements?.thighs ? Number(clientData.measurements.thighs) : undefined,
+            } : undefined,
+            notes: 'Medición inicial',
+          });
+        }
       } catch (error: any) {
         console.error('Error creando cliente:', error.response?.data || error.message);
         throw error;
@@ -200,53 +235,73 @@ export function ClientFullForm({ onSuccess, onCancel }: Props) {
             </div>
             <div className="space-y-1">
               <Label>Género</Label>
-              <Select {...clientForm.register('gender', { required: 'Requerido' })}>
+              <select
+                {...clientForm.register('gender', { required: 'Requerido' })}
+                className="w-full h-12 px-4 rounded-lg border border-gray-200 text-sm text-dark bg-white focus:outline-none focus:ring-2 focus:ring-primary"
+              >
                 <option value="MALE">Masculino</option>
                 <option value="FEMALE">Femenino</option>
                 <option value="OTHER">Otro</option>
-              </Select>
+              </select>
               {clientForm.formState.errors.gender && <p className="text-xs text-red-500">{clientForm.formState.errors.gender.message}</p>}
             </div>
           </div>
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-1">
               <Label>Peso (kg)</Label>
-              <Input 
-                type="number" 
-                step="0.1" 
-                {...clientForm.register('weight', { 
-                  required: 'Requerido',
-                  min: { value: 1, message: 'Mín. 1 kg' },
-                  max: { value: 500, message: 'Máx. 500 kg' },
-                  valueAsNumber: true
-                })} 
-              />
+              <Input type="number" step="0.1"
+                {...clientForm.register('weight', { required: 'Requerido', min: { value: 1, message: 'Mín. 1 kg' }, max: { value: 500, message: 'Máx. 500 kg' }, valueAsNumber: true })} />
               {clientForm.formState.errors.weight && <p className="text-xs text-red-500">{clientForm.formState.errors.weight.message}</p>}
             </div>
             <div className="space-y-1">
               <Label>Altura (cm)</Label>
-              <Input 
-                type="number" 
-                {...clientForm.register('height', { 
-                  required: 'Requerido',
-                  min: { value: 1, message: 'Mín. 1 cm' },
-                  max: { value: 300, message: 'Máx. 300 cm' },
-                  valueAsNumber: true
-                })} 
-              />
+              <Input type="number"
+                {...clientForm.register('height', { required: 'Requerido', min: { value: 1, message: 'Mín. 1 cm' }, max: { value: 300, message: 'Máx. 300 cm' }, valueAsNumber: true })} />
               {clientForm.formState.errors.height && <p className="text-xs text-red-500">{clientForm.formState.errors.height.message}</p>}
             </div>
           </div>
-          <div className="space-y-1">
-            <Label>Objetivo</Label>
-            <Select {...clientForm.register('goalType', { required: 'Requerido' })}>
-              <option value="WEIGHT_LOSS">Pérdida de peso</option>
-              <option value="MUSCLE_GAIN">Ganancia muscular</option>
-              <option value="MAINTENANCE">Mantenimiento</option>
-              <option value="STRENGTH">Fuerza</option>
-              <option value="ENDURANCE">Resistencia</option>
-            </Select>
-            {clientForm.formState.errors.goalType && <p className="text-xs text-red-500">{clientForm.formState.errors.goalType.message}</p>}
+          <div className="grid grid-cols-2 gap-4">
+            <div className="space-y-1">
+              <Label>% Grasa corporal <span className="text-gray-400 font-normal">(opcional)</span></Label>
+              <Input type="number" step="0.1" placeholder="Ej: 20"
+                {...clientForm.register('bodyFatPercentage', { valueAsNumber: true })} />
+            </div>
+            <div className="space-y-1">
+              <Label>Objetivo</Label>
+              <select
+                {...clientForm.register('goalType', { required: 'Requerido' })}
+                className="w-full h-12 px-4 rounded-lg border border-gray-200 text-sm text-dark bg-white focus:outline-none focus:ring-2 focus:ring-primary"
+              >
+                <option value="WEIGHT_LOSS">Pérdida de peso</option>
+                <option value="MUSCLE_GAIN">Ganancia muscular</option>
+                <option value="MAINTENANCE">Mantenimiento</option>
+                <option value="STRENGTH">Fuerza</option>
+                <option value="ENDURANCE">Resistencia</option>
+              </select>
+              {clientForm.formState.errors.goalType && <p className="text-xs text-red-500">{clientForm.formState.errors.goalType.message}</p>}
+            </div>
+          </div>
+
+          {/* Initial measurements */}
+          <div>
+            <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">
+              Medidas iniciales (cm) <span className="text-gray-400 font-normal normal-case">— opcionales</span>
+            </p>
+            <div className="grid grid-cols-3 gap-3">
+              {[
+                { name: 'waist',  label: 'Cintura' },
+                { name: 'chest',  label: 'Pecho' },
+                { name: 'arms',   label: 'Brazos' },
+                { name: 'hips',   label: 'Caderas' },
+                { name: 'thighs', label: 'Muslos' },
+              ].map(({ name, label }) => (
+                <div key={name} className="space-y-1">
+                  <Label>{label}</Label>
+                  <Input type="number" step="0.1" placeholder="—"
+                    {...clientForm.register(`measurements.${name}` as any, { valueAsNumber: true })} />
+                </div>
+              ))}
+            </div>
           </div>
           <div className="flex justify-end gap-3 pt-2">
             <Button type="button" variant="outline" onClick={onCancel}>Cancelar</Button>

@@ -1,14 +1,16 @@
 'use client';
 
 import { Routine, DIFFICULTY_LABELS, GOAL_LABELS } from '@/types/routines';
-import { X, Pencil, Target, BarChart2, Calendar, Dumbbell } from 'lucide-react';
+import { X, Pencil, Target, BarChart2, Calendar, Dumbbell, TrendingUp, History } from 'lucide-react';
 import { useState, useRef, useEffect, useLayoutEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { MarqueeText } from '@/components/ui/marquee-text';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { equipmentService } from '@/services/equipment.service';
 import { Equipment } from '@/types/gym';
 import { motion, useReducedMotion } from 'framer-motion';
+import { routinesService } from '@/services/routines.service';
+import { ExerciseLog } from '@/types/routines';
 
 const DAY_KEYS = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'];
 const DAY_ABBR = ['L', 'M', 'X', 'J', 'V', 'S', 'D'];
@@ -49,9 +51,10 @@ interface RoutineDetailModalProps {
   routine: Routine;
   onClose: () => void;
   onEdit?: (routine: Routine) => void;
+  clientId?: string; // if opened from client tracking
 }
 
-export function RoutineDetailModal({ routine, onClose, onEdit }: RoutineDetailModalProps) {
+export function RoutineDetailModal({ routine, onClose, onEdit, clientId }: RoutineDetailModalProps) {
   const days = Object.entries(routine.weeklySchedule || {});
   const client = routine.assignments?.[0]?.client;
   const prefersReducedMotion = useReducedMotion();
@@ -171,7 +174,8 @@ export function RoutineDetailModal({ routine, onClose, onEdit }: RoutineDetailMo
                     </div>
                     <div className="flex flex-col gap-1">
                       {exs.map((ex, idx) => (
-                        <ExerciseChipDetail key={idx} exercise={ex} equipment={equipment} />
+                        <ExerciseChipDetail key={idx} exercise={ex} equipment={equipment}
+                          clientId={clientId} routineId={routine.id} />
                       ))}
                       {exs.length === 0 && (
                         <div className="min-h-[48px] rounded-lg border border-dashed border-gray-100" />
@@ -190,74 +194,225 @@ export function RoutineDetailModal({ routine, onClose, onEdit }: RoutineDetailMo
 }
 
 // Chip with portal-based popover — never causes horizontal scroll
-function ExerciseChipDetail({ exercise, equipment }: { exercise: any; equipment: Equipment[] }) {
+function ExerciseChipDetail({ exercise, equipment, clientId, routineId }: {
+  exercise: any; equipment: Equipment[]; clientId?: string; routineId?: string;
+}) {
+  const qc = useQueryClient();
   const [open, setOpen] = useState(false);
+  const [view, setView] = useState<'info' | 'update' | 'history'>('info');
+  const [newWeight, setNewWeight] = useState('');
+  const [newSets, setNewSets] = useState('');
+  const [newReps, setNewReps] = useState('');
+  const [newWeek, setNewWeek] = useState('');
   const btnRef = useRef<HTMLButtonElement>(null);
   const popRef = useRef<HTMLDivElement>(null);
   const [popStyle, setPopStyle] = useState<React.CSSProperties>({ display: 'none' });
 
-  // notes field stores "weight|equipmentId" from the form
   const [weight, equipmentId] = (exercise.notes ?? '').split('|');
   const eq = equipmentId ? equipment.find(e => e.id === equipmentId) : null;
+
+  // Fetch logs for this exercise if clientId is available
+  const { data: logsGrouped = {} } = useQuery<Record<string, ExerciseLog[]>>({
+    queryKey: ['exercise-logs', clientId, routineId],
+    queryFn: () => routinesService.getExerciseLogs(clientId!, routineId!),
+    enabled: !!clientId && !!routineId && open,
+  });
+  const exerciseLogs: ExerciseLog[] = logsGrouped[exercise.name] ?? [];
+  const lastLog = exerciseLogs[exerciseLogs.length - 1];
+
+  const logMutation = useMutation({
+    mutationFn: (dto: any) => routinesService.logExercise(clientId!, routineId!, dto),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['exercise-logs', clientId, routineId] });
+      setView('info');
+      setNewWeight(''); setNewSets(''); setNewReps(''); setNewWeek('');
+    },
+  });
 
   useLayoutEffect(() => {
     if (!open || !btnRef.current) return;
     const rect = btnRef.current.getBoundingClientRect();
-    const popWidth = 192; // w-48
+    const popWidth = 220;
     const spaceRight = window.innerWidth - rect.right;
     const left = spaceRight >= popWidth ? rect.left : Math.max(8, rect.right - popWidth);
-    // prefer above if not enough space below
     const spaceBelow = window.innerHeight - rect.top;
-    const popHeight = 160;
+    const popHeight = view === 'history' ? 280 : view === 'update' ? 240 : 180;
     const top = spaceBelow >= popHeight + 8 ? rect.bottom + 4 : rect.top - popHeight - 4;
     setPopStyle({ position: 'fixed', top, left, width: popWidth, zIndex: 99999 });
-  }, [open]);
+  }, [open, view]);
 
   useEffect(() => {
     if (!open) return;
     const handler = (e: MouseEvent) => {
       const t = e.target as Node;
       if (btnRef.current?.contains(t) || popRef.current?.contains(t)) return;
-      setOpen(false);
+      setOpen(false); setView('info');
     };
     document.addEventListener('mousedown', handler, true);
     return () => document.removeEventListener('mousedown', handler, true);
   }, [open]);
+
+  const handleLog = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newWeight || !clientId || !routineId) return;
+    logMutation.mutate({
+      exerciseName: exercise.name,
+      sets: parseInt(newSets) || exercise.sets,
+      reps: newReps || String(exercise.reps),
+      weightKg: parseFloat(newWeight),
+      weekNumber: newWeek ? parseInt(newWeek) : undefined,
+    });
+  };
 
   return (
     <>
       <button ref={btnRef} type="button" onClick={() => setOpen(o => !o)}
         className={`w-full text-left bg-white border rounded-lg px-2 py-1.5 transition-colors hover:border-primary/50 ${open ? 'border-primary/50' : 'border-gray-200'}`}>
         <p className="text-xs font-semibold text-dark leading-tight truncate">{exercise.name}</p>
-        <p className="text-xs text-gray-400 leading-tight">{exercise.sets}×{exercise.reps}</p>
+        <div className="flex items-center justify-between gap-1">
+          <p className="text-xs text-gray-400 leading-tight">{exercise.sets}×{exercise.reps}</p>
+          {lastLog && clientId && (
+            <p className="text-[10px] text-primary font-semibold">{lastLog.weightKg}kg</p>
+          )}
+          {!lastLog && weight && (
+            <p className="text-[10px] text-gray-400">{weight}</p>
+          )}
+        </div>
       </button>
 
       {open && typeof document !== 'undefined' && createPortal(
-        <div ref={popRef} style={popStyle} className="bg-white rounded-xl border border-gray-200 shadow-xl p-3 space-y-2">
-          <div className="flex items-start justify-between gap-2">
-            <p className="text-xs font-bold text-dark leading-tight">{exercise.name}</p>
-            <button type="button" onClick={() => setOpen(false)}
-              className="p-0.5 rounded hover:bg-bone shrink-0">
+        <div ref={popRef} style={popStyle}
+          className="bg-white rounded-xl border border-gray-200 shadow-xl overflow-hidden">
+
+          {/* Popover header */}
+          <div className="flex items-center justify-between gap-2 px-3 py-2.5 border-b border-gray-100 bg-bone">
+            <p className="text-xs font-bold text-dark truncate flex-1">{exercise.name}</p>
+            <button type="button" onClick={() => { setOpen(false); setView('info'); }}
+              className="p-0.5 rounded hover:bg-gray-200 shrink-0">
               <X className="h-3 w-3 text-gray-400" />
             </button>
           </div>
-          <div className="grid grid-cols-2 gap-x-3 gap-y-1">
-            <span className="text-xs text-gray-400">Sets <span className="text-dark font-medium">{exercise.sets}</span></span>
-            <span className="text-xs text-gray-400">Reps <span className="text-dark font-medium">{exercise.reps}</span></span>
-            <span className="text-xs text-gray-400">Desc <span className="text-dark font-medium">{exercise.restSeconds}s</span></span>
-            {weight && <span className="text-xs text-gray-400">Peso <span className="text-dark font-medium">{weight}</span></span>}
-          </div>
-          {eq && (
-            <div className="flex items-center justify-center gap-1.5 pt-1 border-t border-gray-100">
-              <Dumbbell className="h-3 w-3 text-gray-400 shrink-0" />
-              <span className="text-xs text-gray-500 truncate">{eq.name}</span>
+
+          {/* View: info */}
+          {view === 'info' && (
+            <div className="p-3 space-y-2.5">
+              <div className="grid grid-cols-2 gap-x-3 gap-y-1">
+                <span className="text-xs text-gray-400">Series <span className="text-dark font-medium">{exercise.sets}</span></span>
+                <span className="text-xs text-gray-400">Reps <span className="text-dark font-medium">{exercise.reps}</span></span>
+                <span className="text-xs text-gray-400">Desc <span className="text-dark font-medium">{exercise.restSeconds}s</span></span>
+                <span className="text-xs text-gray-400">
+                  Peso <span className="text-dark font-medium">
+                    {lastLog ? `${lastLog.weightKg} kg` : weight || '—'}
+                  </span>
+                </span>
+              </div>
+              {eq && (
+                <div className="flex items-center gap-1.5 pt-1 border-t border-gray-100">
+                  <Dumbbell className="h-3 w-3 text-gray-400 shrink-0" />
+                  <span className="text-xs text-gray-500 truncate">{eq.name}</span>
+                </div>
+              )}
+              {exercise.muscleGroups?.length > 0 && (
+                <div className="flex flex-wrap gap-1 pt-1 border-t border-gray-100">
+                  {exercise.muscleGroups.map((mg: string) => (
+                    <span key={mg} className="text-xs bg-bone text-gray-500 rounded px-1.5 py-0.5">{mg}</span>
+                  ))}
+                </div>
+              )}
+              {/* Action buttons — only if clientId provided */}
+              {clientId && routineId && (
+                <div className="flex gap-1.5 pt-1 border-t border-gray-100">
+                  <button onClick={() => setView('update')}
+                    className="flex-1 flex items-center justify-center gap-1 py-1.5 rounded-lg bg-primary text-dark text-xs font-semibold hover:bg-primary-hover transition-colors">
+                    <TrendingUp className="h-3 w-3" />
+                    Actualizar
+                  </button>
+                  <button onClick={() => setView('history')}
+                    className="flex-1 flex items-center justify-center gap-1 py-1.5 rounded-lg bg-bone text-gray-600 text-xs font-semibold hover:bg-gray-200 transition-colors">
+                    <History className="h-3 w-3" />
+                    Historial
+                  </button>
+                </div>
+              )}
             </div>
           )}
-          {exercise.muscleGroups?.length > 0 && (
-            <div className="flex flex-wrap gap-1 pt-1 border-t border-gray-100">
-              {exercise.muscleGroups.map((mg: string) => (
-                <span key={mg} className="text-xs bg-bone text-gray-500 rounded px-1.5 py-0.5">{mg}</span>
-              ))}
+
+          {/* View: update weight */}
+          {view === 'update' && (
+            <form onSubmit={handleLog} className="p-3 space-y-2">
+              <button type="button" onClick={() => setView('info')}
+                className="text-[10px] text-gray-400 hover:text-dark flex items-center gap-1">
+                ← Volver
+              </button>
+              <div className="grid grid-cols-2 gap-2">
+                <div>
+                  <label className="text-[10px] text-gray-500 uppercase font-semibold block mb-1">Peso (kg) *</label>
+                  <input type="number" step="0.5" required value={newWeight}
+                    onChange={e => setNewWeight(e.target.value)}
+                    placeholder={lastLog ? `${lastLog.weightKg}` : weight || '0'}
+                    className="w-full h-8 px-2 rounded-lg border border-gray-200 text-xs focus:outline-none focus:border-primary" />
+                </div>
+                <div>
+                  <label className="text-[10px] text-gray-500 uppercase font-semibold block mb-1">Semana</label>
+                  <input type="number" min="1" value={newWeek}
+                    onChange={e => setNewWeek(e.target.value)} placeholder="1"
+                    className="w-full h-8 px-2 rounded-lg border border-gray-200 text-xs focus:outline-none focus:border-primary" />
+                </div>
+                <div>
+                  <label className="text-[10px] text-gray-500 uppercase font-semibold block mb-1">Series</label>
+                  <input type="number" min="1" value={newSets}
+                    onChange={e => setNewSets(e.target.value)} placeholder={String(exercise.sets)}
+                    className="w-full h-8 px-2 rounded-lg border border-gray-200 text-xs focus:outline-none focus:border-primary" />
+                </div>
+                <div>
+                  <label className="text-[10px] text-gray-500 uppercase font-semibold block mb-1">Reps</label>
+                  <input type="text" value={newReps}
+                    onChange={e => setNewReps(e.target.value)} placeholder={String(exercise.reps)}
+                    className="w-full h-8 px-2 rounded-lg border border-gray-200 text-xs focus:outline-none focus:border-primary" />
+                </div>
+              </div>
+              <button type="submit" disabled={logMutation.isPending || !newWeight}
+                className="w-full h-8 bg-primary text-dark text-xs font-semibold rounded-lg hover:bg-primary-hover transition-colors disabled:opacity-50 flex items-center justify-center gap-1">
+                {logMutation.isPending
+                  ? <div className="w-3.5 h-3.5 border-2 border-dark border-t-transparent rounded-full animate-spin" />
+                  : <><TrendingUp className="h-3 w-3" /> Guardar</>}
+              </button>
+            </form>
+          )}
+
+          {/* View: history */}
+          {view === 'history' && (
+            <div className="p-3 space-y-2">
+              <button type="button" onClick={() => setView('info')}
+                className="text-[10px] text-gray-400 hover:text-dark flex items-center gap-1">
+                ← Volver
+              </button>
+              {exerciseLogs.length === 0 ? (
+                <p className="text-xs text-gray-400 text-center py-3">Sin registros aún</p>
+              ) : (
+                <div className="overflow-y-auto max-h-44">
+                  <table className="w-full">
+                    <thead className="bg-bone">
+                      <tr>
+                        {['Fecha', 'Peso', 'Sem'].map(h => (
+                          <th key={h} className="px-2 py-1.5 text-left text-[9px] font-semibold text-gray-500 uppercase">{h}</th>
+                        ))}
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-gray-50">
+                      {[...exerciseLogs].reverse().map(l => (
+                        <tr key={l.id} className="hover:bg-bone/50">
+                          <td className="px-2 py-1.5 text-[10px] text-gray-600 whitespace-nowrap">
+                            {(() => { try { return new Date(l.date).toLocaleDateString('es-CR', { day: '2-digit', month: 'short' }); } catch { return l.date; } })()}
+                          </td>
+                          <td className="px-2 py-1.5 text-[10px] font-bold text-dark">{l.weightKg} kg</td>
+                          <td className="px-2 py-1.5 text-[10px] text-gray-600">{l.weekNumber ?? '—'}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
             </div>
           )}
         </div>,

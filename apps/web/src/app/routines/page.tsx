@@ -157,6 +157,7 @@ export default function RoutinesPage() {
               routine={modal.routine}
               onClose={closeModal}
               onEdit={canEdit ? (r) => setModal({ type: 'edit', routine: r }) : undefined}
+              clientId={modal.routine.assignments?.[0]?.client?.id}
             />
           )}
           {(modal.type === 'create' || modal.type === 'edit') && (

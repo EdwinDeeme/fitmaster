@@ -32,7 +32,6 @@ export class FinancesService {
         },
       },
       include: {
-        client: { select: { firstName: true, lastName: true, email: true } },
         membership: {
           include: { client: { select: { firstName: true, lastName: true, email: true } } },
         },
@@ -133,7 +132,6 @@ export class FinancesService {
       this.prisma.payment.findMany({
         where: { gymId, status: 'COMPLETED', createdAt: { gte: startDate, lte: endDate } },
         include: {
-          client: { select: { firstName: true, lastName: true } },
           membership: { include: { client: { select: { firstName: true, lastName: true } } } },
         },
         orderBy: { createdAt: 'desc' },
