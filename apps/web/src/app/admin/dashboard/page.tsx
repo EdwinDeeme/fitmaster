@@ -45,15 +45,15 @@ export default function AdminDashboardPage() {
       <DashboardLayout>
         <div className="py-6 space-y-8">
           {/* Header */}
-          <div className="bg-gradient-to-r from-dark to-gray-800 rounded-2xl p-8 text-white shadow-lg">
-            <div className="flex items-center justify-between">
-              <div>
-                <h2 className="text-4xl font-bold mb-2">Panel de Control</h2>
-                <p className="text-gray-300 text-lg">
+          <div className="bg-gradient-to-r from-dark to-gray-800 rounded-2xl p-5 sm:p-8 text-white shadow-lg">
+            <div className="flex items-center justify-between gap-4">
+              <div className="min-w-0">
+                <h2 className="text-xl sm:text-4xl font-bold mb-1 sm:mb-2 truncate">Panel de Control</h2>
+                <p className="text-gray-300 text-sm sm:text-lg">
                   Bienvenido de vuelta, <span className="text-primary font-semibold">{user?.firstName}</span>
                 </p>
               </div>
-              <div className="hidden md:flex items-center gap-2 bg-gradient-to-r from-primary via-primary to-primary/80 px-4 py-2 rounded-lg shadow-md">
+              <div className="hidden md:flex items-center gap-2 bg-gradient-to-r from-primary via-primary to-primary/80 px-4 py-2 rounded-lg shadow-md shrink-0">
                 <Activity className="h-5 w-5 text-dark" />
                 <span className="text-dark font-semibold">Sistema Activo</span>
               </div>
@@ -61,7 +61,7 @@ export default function AdminDashboardPage() {
           </div>
 
           {/* Platform Metrics */}
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-6">
             <Card className="border-none shadow-lg hover:shadow-xl transition-shadow bg-white">
               <CardHeader className="flex flex-row items-center justify-between pb-2">
                 <CardDescription className="text-gray-600">Total Gimnasios</CardDescription>
@@ -254,7 +254,7 @@ export default function AdminDashboardPage() {
               </div>
             </CardHeader>
             <CardContent className="pt-6">
-              <div className="grid grid-cols-4 gap-6">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-6">
                 <div className="flex items-center gap-3 p-4 bg-bone rounded-xl hover:bg-gray-100 transition-colors">
                   <div className="p-2 bg-primary/10 rounded-lg">
                     <CheckCircle2 className="h-5 w-5 text-green-700" />

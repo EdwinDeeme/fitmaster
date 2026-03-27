@@ -21,7 +21,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const router = useRouter();
 
   useEffect(() => {
-    // Load user from localStorage on mount
     const currentUser = authService.getCurrentUser();
     setUser(currentUser);
     setIsLoading(false);

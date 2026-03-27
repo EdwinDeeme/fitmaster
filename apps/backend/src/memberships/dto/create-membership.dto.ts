@@ -6,6 +6,10 @@ export class CreateMembershipDto {
   @IsString()
   clientId: string;
 
+  @IsOptional()
+  @IsString()
+  membershipPlanId?: string;
+
   @IsEnum(MembershipType)
   type: MembershipType;
 

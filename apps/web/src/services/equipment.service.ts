@@ -6,6 +6,10 @@ export const equipmentService = {
     const { data } = await api.get('/equipment/catalog');
     return data;
   },
+  getMaintenanceUsers: async () => {
+    const { data } = await api.get('/equipment/maintenance-users');
+    return data;
+  },
   getAll: async (): Promise<Equipment[]> => {
     const { data } = await api.get('/equipment');
     return data;
@@ -27,6 +31,10 @@ export const equipmentService = {
   },
   addMaintenance: async (id: string, dto: any) => {
     const { data } = await api.post(`/equipment/${id}/maintenance`, dto);
+    return data;
+  },
+  updateMaintenance: async (recordId: string, dto: any) => {
+    const { data } = await api.patch(`/equipment/maintenance/${recordId}`, dto);
     return data;
   },
 };

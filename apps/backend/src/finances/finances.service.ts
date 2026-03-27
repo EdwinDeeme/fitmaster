@@ -9,22 +9,27 @@ export class FinancesService {
   // ─── PAYMENTS ───────────────────────────────────────────────────────────────
 
   async createPayment(gymId: string, dto: CreatePaymentDto) {
-    const membership = await this.prisma.membership.findFirst({
-      where: { id: dto.membershipId, gymId },
-    });
-    if (!membership) throw new NotFoundException('Membresía no encontrada');
+    if (dto.membershipId) {
+      const membership = await this.prisma.membership.findFirst({
+        where: { id: dto.membershipId, gymId },
+      });
+      if (!membership) throw new NotFoundException('Membresía no encontrada');
+    }
 
     return this.prisma.payment.create({
       data: {
         gymId,
-        clientId: dto.clientId,
-        membershipId: dto.membershipId,
+        clientId: dto.clientId ?? null,
+        membershipId: dto.membershipId ?? null,
         amount: dto.amount,
         currency: dto.currency ?? 'CRC',
         method: dto.method,
         status: 'COMPLETED',
-        sinpeReference: dto.sinpeReference,
-        metadata: dto.notes ? { notes: dto.notes } : undefined,
+        sinpeReference: dto.sinpeReference ?? null,
+        metadata: {
+          ...(dto.notes ? { notes: dto.notes } : {}),
+          ...(dto.description ? { description: dto.description } : {}),
+        },
       },
       include: {
         membership: {
@@ -65,6 +70,12 @@ export class FinancesService {
     });
     if (!payment) throw new NotFoundException('Pago no encontrado');
     return payment;
+  }
+
+  async deletePayment(gymId: string, id: string) {
+    const payment = await this.prisma.payment.findFirst({ where: { id, gymId } });
+    if (!payment) throw new NotFoundException('Pago no encontrado');
+    return this.prisma.payment.delete({ where: { id } });
   }
 
   // ─── EXPENSES ────────────────────────────────────────────────────────────────

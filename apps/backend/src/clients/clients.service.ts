@@ -1,19 +1,19 @@
 import { Injectable, NotFoundException, ConflictException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
-import { CreateClientDto, UpdateClientDto, CreateClientFullDto } from './dto';
+import { CreateClientDto, UpdateClientDto, CreateClientFullDto, CreateProgressDto, UpdateGoalDto } from './dto';
 
 @Injectable()
 export class ClientsService {
   constructor(private prisma: PrismaService) {}
 
-  async create(gymId: string, dto: CreateClientDto) {
+  async create(gymId: string, userId: string, dto: CreateClientDto) {
     const existing = await this.prisma.client.findUnique({
       where: { gymId_email: { gymId, email: dto.email } },
     });
     if (existing) throw new ConflictException('Ya existe un cliente con ese email en este gimnasio');
 
     const weight = dto.weight;
-    const height = dto.height / 100; // cm to m
+    const height = dto.height / 100;
     const bmi = parseFloat((weight / (height * height)).toFixed(2));
 
     return this.prisma.client.create({
@@ -88,7 +88,55 @@ export class ClientsService {
     return this.prisma.client.delete({ where: { id } });
   }
 
-  async createFull(gymId: string, dto: CreateClientFullDto) {
+  // ─── Physical Progress ────────────────────────────────────────────────────
+
+  async addProgress(gymId: string, clientId: string, dto: CreateProgressDto) {
+    const client = await this.prisma.client.findFirst({ where: { id: clientId, gymId } });
+    if (!client) throw new NotFoundException('Cliente no encontrado');
+
+    const progress = await this.prisma.physicalProgress.create({
+      data: {
+        gymId,
+        clientId,
+        date: dto.date ? new Date(dto.date) : new Date(),
+        weight: dto.weight,
+        bodyFatPercentage: dto.bodyFatPercentage,
+        measurements: dto.measurements ?? undefined,
+        notes: dto.notes,
+      },
+    });
+
+    // Update client's current weight
+    await this.prisma.client.update({
+      where: { id: clientId },
+      data: { weight: dto.weight, bodyFatPercentage: dto.bodyFatPercentage },
+    });
+
+    return progress;
+  }
+
+  async getProgress(gymId: string, clientId: string) {
+    const client = await this.prisma.client.findFirst({ where: { id: clientId, gymId } });
+    if (!client) throw new NotFoundException('Cliente no encontrado');
+    return this.prisma.physicalProgress.findMany({
+      where: { gymId, clientId },
+      orderBy: { date: 'asc' },
+    });
+  }
+
+  async updateGoal(gymId: string, clientId: string, dto: UpdateGoalDto) {
+    const client = await this.prisma.client.findFirst({ where: { id: clientId, gymId } });
+    if (!client) throw new NotFoundException('Cliente no encontrado');
+    return this.prisma.client.update({
+      where: { id: clientId },
+      data: {
+        targetWeight: dto.targetWeight,
+        targetDate: dto.targetDate ? new Date(dto.targetDate) : undefined,
+      },
+    });
+  }
+
+  async createFull(gymId: string, userId: string, dto: CreateClientFullDto) {
     const existing = await this.prisma.client.findUnique({
       where: { gymId_email: { gymId, email: dto.email } },
     });
@@ -139,6 +187,7 @@ export class ClientsService {
         data: {
           gymId,
           clientId: client.id,
+          membershipPlanId: dto.membership.membershipPlanId ?? null,
           type: dto.membership.type,
           startDate: new Date(dto.membership.startDate),
           endDate: new Date(dto.membership.endDate),

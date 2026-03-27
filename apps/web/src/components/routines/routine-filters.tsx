@@ -15,8 +15,8 @@ export function RoutineFiltersBar({ filters, onChange }: RoutineFiltersBarProps)
   const clear = () => onChange({ search: '', difficulty: '', targetGoal: '' });
 
   return (
-    <div className="flex flex-col sm:flex-row gap-3">
-      <div className="relative flex-1">
+    <div className="flex flex-col sm:flex-row gap-3 items-center">
+      <div className="relative w-full sm:w-72">
         <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400 pointer-events-none" />
         <Input
           placeholder="Buscar rutinas..."
@@ -26,35 +26,37 @@ export function RoutineFiltersBar({ filters, onChange }: RoutineFiltersBarProps)
         />
       </div>
 
-      <Select
-        value={filters.difficulty || ''}
-        onChange={(e) => onChange({ ...filters, difficulty: e.target.value })}
-        className="sm:w-44"
-      >
-        <option value="">Dificultad</option>
-        <option value="BEGINNER">Principiante</option>
-        <option value="INTERMEDIATE">Intermedio</option>
-        <option value="ADVANCED">Avanzado</option>
-      </Select>
+      <div className="flex gap-2 items-center sm:ml-auto">
+        <Select
+          value={filters.difficulty || ''}
+          onChange={(e) => onChange({ ...filters, difficulty: e.target.value })}
+          className="w-40"
+        >
+          <option value="">Dificultad</option>
+          <option value="BEGINNER">Principiante</option>
+          <option value="INTERMEDIATE">Intermedio</option>
+          <option value="ADVANCED">Avanzado</option>
+        </Select>
 
-      <Select
-        value={filters.targetGoal || ''}
-        onChange={(e) => onChange({ ...filters, targetGoal: e.target.value })}
-        className="sm:w-52"
-      >
-        <option value="">Objetivo</option>
-        <option value="WEIGHT_LOSS">Pérdida de peso</option>
-        <option value="MUSCLE_GAIN">Ganancia muscular</option>
-        <option value="MAINTENANCE">Mantenimiento</option>
-        <option value="STRENGTH">Fuerza</option>
-        <option value="ENDURANCE">Resistencia</option>
-      </Select>
+        <Select
+          value={filters.targetGoal || ''}
+          onChange={(e) => onChange({ ...filters, targetGoal: e.target.value })}
+          className="w-48"
+        >
+          <option value="">Objetivo</option>
+          <option value="WEIGHT_LOSS">Pérdida de peso</option>
+          <option value="MUSCLE_GAIN">Ganancia muscular</option>
+          <option value="MAINTENANCE">Mantenimiento</option>
+          <option value="STRENGTH">Fuerza</option>
+          <option value="ENDURANCE">Resistencia</option>
+        </Select>
 
-      {hasActiveFilters && (
-        <Button variant="ghost" size="sm" onClick={clear} className="shrink-0">
-          <X className="h-4 w-4 mr-1" /> Limpiar
-        </Button>
-      )}
+        {hasActiveFilters && (
+          <Button variant="ghost" size="sm" onClick={clear} className="shrink-0">
+            <X className="h-4 w-4 mr-1" /> Limpiar
+          </Button>
+        )}
+      </div>
     </div>
   );
 }

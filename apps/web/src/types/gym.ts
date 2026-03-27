@@ -30,6 +30,8 @@ export interface Client {
   status: ClientStatus;
   createdAt: string;
   memberships?: Membership[];
+  physicalProgress?: PhysicalProgress[];
+  routineAssignments?: RoutineAssignment[];
   _count?: { routineAssignments: number };
 }
 
@@ -51,8 +53,8 @@ export interface Membership {
 export interface Payment {
   id: string;
   gymId: string;
-  clientId: string;
-  membershipId: string;
+  clientId?: string;
+  membershipId?: string;
   amount: number;
   currency: string;
   method: PaymentMethod;
@@ -60,6 +62,7 @@ export interface Payment {
   sinpeReference?: string;
   metadata?: any;
   createdAt: string;
+  client?: Pick<Client, 'id' | 'firstName' | 'lastName' | 'email'>;
   membership?: Membership & { client?: Pick<Client, 'id' | 'firstName' | 'lastName' | 'email'> };
 }
 
@@ -109,7 +112,24 @@ export interface RoutineAssignment {
   startDate: string;
   isActive: boolean;
   client?: Pick<Client, 'id' | 'firstName' | 'lastName' | 'email'>;
-  routine?: Pick<Routine, 'id' | 'name' | 'difficulty'>;
+  routine?: Pick<Routine, 'id' | 'name' | 'difficulty' | 'targetGoal' | 'durationWeeks'>;
+}
+
+export interface PhysicalProgress {
+  id: string;
+  clientId: string;
+  date: string;
+  weight: number;
+  bodyFatPercentage?: number;
+  measurements?: {
+    chest?: number;
+    waist?: number;
+    hips?: number;
+    arms?: number;
+    thighs?: number;
+  };
+  notes?: string;
+  createdAt: string;
 }
 
 export interface Equipment {
@@ -146,4 +166,48 @@ export interface StaffMember {
   firstName: string;
   lastName: string;
   createdAt: string;
+  metrics?: {
+    routinesCreated: number;
+    activeAssignedClients: number;
+    maintenancePerformed: number;
+    clientsCreated: number;
+  };
+}
+
+export interface StaffRoutineActivity {
+  id: string;
+  name: string;
+  difficulty: DifficultyLevel;
+  targetGoal: GoalType;
+  createdAt: string;
+  _count?: { assignments: number };
+}
+
+export interface StaffMaintenanceActivity {
+  id: string;
+  date: string;
+  type: 'ROUTINE' | 'REPAIR' | 'REPLACEMENT';
+  description: string;
+  cost?: number;
+  equipment: { id: string; name: string };
+}
+
+export interface StaffClientActivity {
+  id: string;
+  firstName: string;
+  lastName: string;
+  email: string;
+  weight: number;
+  height: number;
+  bmi: number;
+  dateOfBirth: string;
+  createdAt: string;
+}
+
+export interface StaffMemberDetail extends StaffMember {
+  activity: {
+    routines: StaffRoutineActivity[];
+    maintenance: StaffMaintenanceActivity[];
+    clients: StaffClientActivity[];
+  };
 }

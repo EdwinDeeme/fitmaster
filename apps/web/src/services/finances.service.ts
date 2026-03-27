@@ -15,6 +15,9 @@ export const financesService = {
     const { data } = await api.post('/finances/payments', dto);
     return data;
   },
+  deletePayment: async (id: string): Promise<void> => {
+    await api.delete(`/finances/payments/${id}`);
+  },
   // Expenses
   getExpenses: async (filters?: { startDate?: string; endDate?: string }): Promise<Expense[]> => {
     const { data } = await api.get('/finances/expenses', { params: filters });

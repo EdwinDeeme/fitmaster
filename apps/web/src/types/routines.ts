@@ -45,6 +45,10 @@ export interface RoutineAssignment {
     firstName: string;
     lastName: string;
     email: string;
+    weight?: number;
+    height?: number;
+    bmi?: number;
+    dateOfBirth?: string;
   };
   routine?: {
     id: string;
@@ -94,3 +98,17 @@ export const GOAL_COLORS: Record<GoalType, string> = {
   STRENGTH: 'bg-orange-100 text-orange-700',
   ENDURANCE: 'bg-teal-100 text-teal-700',
 };
+
+export interface ExerciseLog {
+  id: string;
+  clientId: string;
+  routineId: string;
+  exerciseName: string;
+  date: string;
+  sets: number;
+  reps: string;
+  weightKg: number;
+  weekNumber?: number;
+  notes?: string;
+  createdAt: string;
+}
