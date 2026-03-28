@@ -8,11 +8,12 @@ export interface AuthResult {
 
 export interface UserProfile {
   id: string;
-  gymId: string | null; // Puede ser null para SUPER_ADMIN
+  gymId: string | null;
   email: string;
   role: UserRole;
   firstName: string;
   lastName: string;
+  mustChangePassword: boolean;
 }
 
 export interface TokenPayload {

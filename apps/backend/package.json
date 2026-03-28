@@ -29,7 +29,7 @@
     "@nestjs/platform-express": "^10.0.0",
     "@nestjs/swagger": "^7.0.0",
     "@nestjs/throttler": "^5.0.0",
-    "@prisma/client": "^5.7.0",
+    "@prisma/client": "^5.22.0",
     "@tirke/node-cache-manager-ioredis": "^3.6.0",
     "aws-sdk": "^2.1450.0",
     "bcrypt": "^5.1.1",

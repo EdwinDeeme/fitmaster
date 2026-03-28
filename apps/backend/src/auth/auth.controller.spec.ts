@@ -19,6 +19,7 @@ describe('AuthController', () => {
       role: UserRole.TRAINER,
       firstName: 'John',
       lastName: 'Doe',
+      mustChangePassword: false,
     },
   };
 

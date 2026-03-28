@@ -43,7 +43,7 @@ export class EquipmentController {
   }
 
   @Get()
-  @Roles(UserRole.GYM_ADMIN, UserRole.TRAINER)
+  @Roles(UserRole.GYM_ADMIN, UserRole.TRAINER, UserRole.CLIENT)
   findAll(@CurrentUser() user: TokenPayload) {
     return this.equipmentService.findAll(user.gymId!);
   }

@@ -4,15 +4,20 @@
     "slug": "fitmaster",
     "version": "1.0.0",
     "orientation": "portrait",
-    "userInterfaceStyle": "light",
+    "userInterfaceStyle": "dark",
+    "backgroundColor": "#000000",
+    "splash": {
+      "backgroundColor": "#000000",
+      "resizeMode": "contain"
+    },
     "ios": {
-      "supportsTablet": true,
+      "supportsTablet": false,
       "bundleIdentifier": "com.fitmaster.app"
     },
     "android": {
       "package": "com.fitmaster.app",
       "adaptiveIcon": {
-        "backgroundColor": "#0ea5e9"
+        "backgroundColor": "#C1EF00"
       }
     },
     "web": {
