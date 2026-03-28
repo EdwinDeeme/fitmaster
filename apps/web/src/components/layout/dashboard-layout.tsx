@@ -79,9 +79,9 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
           <div className="flex justify-between items-center h-14 sm:h-16">
             {/* Logo */}
             <div className="flex items-center gap-3">
-              {/* Hamburger — mobile only */}
+              {/* Hamburger — below lg */}
               <button
-                className="md:hidden p-2 rounded-lg hover:bg-bone transition-colors"
+                className="lg:hidden p-2 rounded-lg hover:bg-bone transition-colors"
                 onClick={() => setMobileMenuOpen(o => !o)}
                 aria-label="Menú"
               >
@@ -91,7 +91,7 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
             </div>
 
             {/* Desktop Navigation */}
-            <nav className="hidden md:flex space-x-1">
+            <nav className="hidden lg:flex space-x-1">
               {mounted && navigation.map((item) => (
                 <Link
                   key={item.name}
@@ -127,9 +127,9 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
           </div>
         </div>
 
-        {/* Mobile Navigation Drawer */}
+        {/* Mobile/Tablet Navigation Drawer */}
         {mobileMenuOpen && mounted && (
-          <div className="md:hidden border-t border-gray-100 bg-white px-4 py-3 space-y-1">
+          <div className="lg:hidden border-t border-gray-100 bg-white px-4 py-3 space-y-1">
             {navigation.map((item) => (
               <Link
                 key={item.name}

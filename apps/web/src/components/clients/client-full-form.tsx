@@ -166,19 +166,19 @@ export function ClientFullForm({ onSuccess, onCancel }: Props) {
   return (
     <div className="space-y-6 p-6">
       {/* Stepper */}
-      <div className="flex items-center w-full">
+      <div className="flex items-center justify-between w-full">
         {STEPS.map((s, i) => (
-          <div key={s.key} className="flex items-center flex-1">
-            <div className={`flex items-center justify-center gap-2 flex-1 py-2 rounded-full text-sm font-medium transition-colors ${
+          <div key={s.key} className="flex items-center min-w-0">
+            <div className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-full text-xs font-medium whitespace-nowrap transition-colors ${
               i < stepIndex   ? 'bg-green-100 text-green-800' :
               i === stepIndex ? 'bg-dark text-white' :
                                 'bg-gray-100 text-gray-500'
             }`}>
-              {i < stepIndex ? <CheckCircle2 size={15} /> : s.icon}
+              {i < stepIndex ? <CheckCircle2 size={13} /> : s.icon}
               {s.label}
             </div>
             {i < STEPS.length - 1 && (
-              <div className={`w-4 h-px mx-1 shrink-0 ${i < stepIndex ? 'bg-green-300' : 'bg-gray-200'}`} />
+              <div className={`w-3 h-px mx-1 shrink-0 ${i < stepIndex ? 'bg-green-300' : 'bg-gray-200'}`} />
             )}
           </div>
         ))}

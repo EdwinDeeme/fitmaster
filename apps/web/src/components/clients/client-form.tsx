@@ -48,6 +48,7 @@ export function ClientForm({ client, onSuccess, onCancel }: Props) {
   const [selectedPlan, setSelectedPlan] = useState<MembershipPlan | null>(null);
   const [planError, setPlanError]       = useState(false);
   const [upgradeError, setUpgradeError] = useState('');
+  const [paymentMethod, setPaymentMethod] = useState('CASH');
   const [startDate, setStartDate]       = useState(new Date().toISOString().split('T')[0]);
   const [dob, setDob]                   = useState<Date | null>(
     client.dateOfBirth ? new Date(client.dateOfBirth) : null,
@@ -89,7 +90,6 @@ export function ClientForm({ client, onSuccess, onCancel }: Props) {
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['client', client.id] });
       qc.invalidateQueries({ queryKey: ['clients'] });
-      onSuccess();
     },
   });
 
@@ -98,11 +98,9 @@ export function ClientForm({ client, onSuccess, onCancel }: Props) {
     mutationFn: async (method: string) => {
       if (!selectedPlan) return;
       const endDate = computeEndDate(startDate, selectedPlan.type);
-      // Deactivate old membership
       if (activeMembership) {
         await membershipsService.updateStatus(activeMembership.id, 'CANCELLED');
       }
-      // Create new membership + payment
       await api.post('/memberships', {
         clientId:  client.id,
         type:      selectedPlan.type,
@@ -118,16 +116,20 @@ export function ClientForm({ client, onSuccess, onCancel }: Props) {
   const handleClientSubmit = (data: any) => {
     if (!dob) { setDobError(true); return; }
     setDobError(false);
-    clientMutation.mutate({ ...data, dateOfBirth: dob.toISOString() });
+    clientMutation.mutate({ ...data, dateOfBirth: dob.toISOString() }, {
+      onSuccess: () => {
+        qc.invalidateQueries({ queryKey: ['client', client.id] });
+        qc.invalidateQueries({ queryKey: ['clients'] });
+        setStep('membership');
+      },
+    });
   };
 
   const handlePlanSelect = (plan: MembershipPlan) => {
     setUpgradeError('');
     if (activeMembership) {
-      const currentOrder = TYPE_ORDER[activeMembership.type] ?? 0;
-      const newOrder     = TYPE_ORDER[plan.type] ?? 0;
-      if (newOrder <= currentOrder) {
-        setUpgradeError(`Solo puedes cambiar a un plan superior. Plan actual: ${membershipLabels[activeMembership.type] ?? activeMembership.type}`);
+      if (Number(plan.price) <= Number(activeMembership.price)) {
+        setUpgradeError(`El plan seleccionado debe tener un precio mayor al actual (₡${Number(activeMembership.price).toLocaleString('es-CR')})`);
         setSelectedPlan(null);
         return;
       }
@@ -139,8 +141,7 @@ export function ClientForm({ client, onSuccess, onCancel }: Props) {
   const handleUpgradeSubmit = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     if (!selectedPlan) { setPlanError(true); return; }
-    const method = (e.currentTarget.elements.namedItem('method') as HTMLSelectElement).value;
-    upgradeMutation.mutate(method);
+    upgradeMutation.mutate(paymentMethod);
   };
 
   const STEPS = [
@@ -154,8 +155,8 @@ export function ClientForm({ client, onSuccess, onCancel }: Props) {
       {/* Stepper */}
       <div className="flex items-center w-full">
         {STEPS.map((s, i) => (
-          <div key={s.key} className="flex items-center flex-1">
-            <div className={`flex items-center justify-center gap-2 flex-1 py-2 rounded-full text-sm font-medium transition-colors ${
+          <div key={s.key} className="flex items-center">
+            <div className={`flex items-center gap-1.5 px-3 py-2 rounded-full text-sm font-medium whitespace-nowrap transition-colors ${
               i < stepIndex   ? 'bg-green-100 text-green-800' :
               i === stepIndex ? 'bg-dark text-white' :
                                 'bg-gray-100 text-gray-500'
@@ -258,22 +259,11 @@ export function ClientForm({ client, onSuccess, onCancel }: Props) {
           {clientMutation.isError && (
             <p className="text-sm text-red-500">Error al guardar. Verifica los datos.</p>
           )}
-          <div className="flex justify-between gap-3 pt-2">
-            <Button type="button" variant="outline" onClick={onCancel}>Cancelar</Button>
+          <div className="flex flex-col gap-2 pt-2">
             <div className="flex gap-2">
-              <Button type="submit" disabled={clientMutation.isPending}>
-                {clientMutation.isPending ? 'Guardando...' : 'Guardar cambios'}
-              </Button>
-              <Button type="button" variant="outline" onClick={() => {
-                // Save first then go to membership
-                handleSubmit(data => {
-                  if (!dob) { setDobError(true); return; }
-                  clientMutation.mutate({ ...data, dateOfBirth: dob.toISOString() }, {
-                    onSuccess: () => setStep('membership'),
-                  });
-                })();
-              }}>
-                Cambiar membresía →
+              <Button type="button" variant="outline" className="flex-1" onClick={onCancel}>Cancelar</Button>
+              <Button type="submit" className="flex-1" disabled={clientMutation.isPending}>
+                {clientMutation.isPending ? 'Guardando...' : 'Siguiente'}
               </Button>
             </div>
           </div>
@@ -318,7 +308,7 @@ export function ClientForm({ client, onSuccess, onCancel }: Props) {
             <>
               <div className="space-y-1">
                 <Label>Método de pago</Label>
-                <Select name="method" defaultValue="CASH">
+                <Select value={paymentMethod} onChange={e => setPaymentMethod(e.target.value)}>
                   <option value="CASH">Efectivo</option>
                   <option value="SINPE_MOVIL">SINPE Móvil</option>
                   <option value="CREDIT_CARD">Tarjeta de crédito</option>
@@ -341,7 +331,7 @@ export function ClientForm({ client, onSuccess, onCancel }: Props) {
           <div className="flex justify-between gap-3 pt-2">
             <Button type="button" variant="outline" onClick={() => setStep('client')}>← Atrás</Button>
             <Button type="submit" disabled={upgradeMutation.isPending || !selectedPlan}>
-              {upgradeMutation.isPending ? 'Guardando...' : 'Actualizar membresía'}
+              {upgradeMutation.isPending ? 'Guardando...' : 'Guardar cambios'}
             </Button>
           </div>
         </form>

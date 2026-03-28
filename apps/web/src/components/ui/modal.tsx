@@ -46,7 +46,7 @@ export function Modal({ open, onClose, title, children, size = 'md' }: ModalProp
 
           {/* Panel */}
           <motion.div
-            className="relative bg-white rounded-t-2xl sm:rounded-2xl shadow-2xl w-full overflow-hidden"
+            className="relative bg-white rounded-t-2xl sm:rounded-2xl shadow-2xl w-full overflow-hidden pb-safe"
             style={{ maxWidth }}
             initial={prefersReducedMotion ? { opacity: 1 } : { opacity: 0, y: 24, scale: 0.97 }}
             animate={prefersReducedMotion
@@ -69,7 +69,7 @@ export function Modal({ open, onClose, title, children, size = 'md' }: ModalProp
             </div>
 
             {/* Content */}
-            <div className="overflow-y-auto max-h-[85vh] sm:max-h-[80vh]">
+            <div className="overflow-y-auto max-h-[85vh] sm:max-h-[80vh] pb-6 sm:pb-0">
               {children}
             </div>
           </motion.div>
