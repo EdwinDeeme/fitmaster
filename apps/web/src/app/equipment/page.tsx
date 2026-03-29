@@ -121,8 +121,10 @@ export default function EquipmentPage() {
               </div>
             </div>
             {isAdmin && (
-              <Button onClick={() => setShowCreate(true)} className="flex items-center gap-2">
-                <Plus className="h-4 w-4" /> Agregar Equipo
+              <Button onClick={() => setShowCreate(true)} size="sm" className="flex items-center gap-1.5 shrink-0">
+                <Plus className="h-4 w-4" />
+                <span className="hidden sm:inline">Agregar Equipo</span>
+                <span className="sm:hidden">Agregar</span>
               </Button>
             )}
           </div>

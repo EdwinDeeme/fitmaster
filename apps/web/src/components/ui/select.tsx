@@ -83,14 +83,23 @@ const Select = React.forwardRef<HTMLSelectElement, SelectProps>(
       } as React.ChangeEvent<HTMLSelectElement>);
     }, []);
 
+    const DROPDOWN_HEIGHT = options.length * 44; // approx height per option
+
     const dropdownStyle: React.CSSProperties = rect
-      ? {
-          position: 'fixed',
-          top: rect.bottom + 4,
-          left: rect.left,
-          width: rect.width,
-          zIndex: 99999,
-        }
+      ? (() => {
+          const spaceBelow = window.innerHeight - rect.bottom - 8;
+          const spaceAbove = rect.top - 8;
+          const openUpward = spaceBelow < DROPDOWN_HEIGHT && spaceAbove > spaceBelow;
+          return {
+            position: 'fixed',
+            ...(openUpward
+              ? { bottom: window.innerHeight - rect.top + 4 }
+              : { top: rect.bottom + 4 }),
+            left: rect.left,
+            width: rect.width,
+            zIndex: 99999,
+          };
+        })()
       : { display: 'none' };
 
     return (

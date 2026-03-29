@@ -30,38 +30,40 @@ export function RoutineFormModal({ routine, onClose, onSuccess }: RoutineFormMod
         ? await routinesService.update(routine!.id, data)
         : await routinesService.create(data);
 
-      // Auto-assign to client if selected during creation
-      if (!isEdit && clientId) {
-        await routinesService.assign(result.id, {
-          clientId,
-          startDate: new Date().toISOString().split('T')[0],
-        });
+      if (clientId) {
+        // On edit: only assign if client changed or wasn't assigned before
+        const currentClientId = routine?.assignments?.[0]?.clientId;
+        if (!isEdit || clientId !== currentClientId) {
+          await routinesService.assign(result.id, {
+            clientId,
+            startDate: new Date().toISOString().split('T')[0],
+          });
+        }
 
-        // Auto-log initial weights for exercises that have a weight defined
-        // Exercise notes field stores "weight|equipmentId"
-        const exercisesWithWeight = Object.values(data.weeklySchedule)
-          .flatMap((day: any) => day.exercises ?? [])
-          .filter((ex: any) => {
+        // Auto-log initial weights only on creation
+        if (!isEdit) {
+          const exercisesWithWeight = Object.values(data.weeklySchedule)
+            .flatMap((day: any) => day.exercises ?? [])
+            .filter((ex: any) => {
+              const notesStr = ex.notes ?? '';
+              const w = notesStr.includes('|') ? notesStr.split('|')[0] : notesStr;
+              return w && !isNaN(parseFloat(w)) && parseFloat(w) > 0;
+            });
+          const seen = new Set<string>();
+          for (const ex of exercisesWithWeight) {
+            if (seen.has(ex.name)) continue;
+            seen.add(ex.name);
             const notesStr = ex.notes ?? '';
-            const w = notesStr.includes('|') ? notesStr.split('|')[0] : notesStr;
-            return w && !isNaN(parseFloat(w)) && parseFloat(w) > 0;
-          });
-
-        // Deduplicate by name
-        const seen = new Set<string>();
-        for (const ex of exercisesWithWeight) {
-          if (seen.has(ex.name)) continue;
-          seen.add(ex.name);
-          const notesStr = ex.notes ?? '';
-          const weightStr = notesStr.includes('|') ? notesStr.split('|')[0] : notesStr;
-          await routinesService.logExercise(clientId, result.id, {
-            exerciseName: ex.name,
-            sets: ex.sets,
-            reps: String(ex.reps),
-            weightKg: parseFloat(weightStr),
-            weekNumber: 1,
-            notes: 'Peso inicial',
-          });
+            const weightStr = notesStr.includes('|') ? notesStr.split('|')[0] : notesStr;
+            await routinesService.logExercise(clientId, result.id, {
+              exerciseName: ex.name,
+              sets: ex.sets,
+              reps: String(ex.reps),
+              weightKg: parseFloat(weightStr),
+              weekNumber: 1,
+              notes: 'Peso inicial',
+            });
+          }
         }
       }
       return result;

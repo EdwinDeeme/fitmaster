@@ -63,7 +63,7 @@ export function MembershipPlanForm({ plan, onSuccess, onCancel }: Props) {
   });
 
   return (
-    <form onSubmit={handleSubmit(d => mutation.mutate(d))} className="space-y-4 p-4">
+    <form onSubmit={handleSubmit(d => mutation.mutate(d))} className="space-y-4 p-4 pb-8">
       <div className="space-y-1">
         <Label>Nombre del plan</Label>
         <Input placeholder="Ej: Mensualidad básica" {...register('name', { required: 'Requerido' })} />

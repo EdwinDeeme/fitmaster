@@ -140,9 +140,13 @@ export default function StaffPage() {
             <div className="overflow-x-auto">
               <table className="w-full">
                 <thead className="bg-bone border-b border-gray-100">
-                  <tr>{['Miembro', 'Email', 'Rol', 'Actividad', 'Acciones'].map(h => (
-                    <th key={h} className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase">{h}</th>
-                  ))}</tr>
+                  <tr>
+                    <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase">Miembro</th>
+                    <th className="hidden sm:table-cell px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase">Email</th>
+                    <th className="hidden sm:table-cell px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase">Rol</th>
+                    <th className="hidden sm:table-cell px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase">Actividad</th>
+                    <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase">Acciones</th>
+                  </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-50">
                   {isLoading ? <tr><td colSpan={5} className="px-4 py-8 text-center text-gray-400">Cargando...</td></tr>
@@ -173,14 +177,14 @@ export default function StaffPage() {
                             </div>
                           </div>
                         </td>
-                        <td className="px-4 py-3 text-sm text-gray-600">{s.email}</td>
-                        <td className="px-4 py-3">
+                        <td className="hidden sm:table-cell px-4 py-3 text-sm text-gray-600">{s.email}</td>
+                        <td className="hidden sm:table-cell px-4 py-3">
                           <div className="flex items-center gap-1.5">
                             {RoleIcon && <RoleIcon className="h-3.5 w-3.5 text-gray-500" />}
                             <Badge variant={roleConfig[s.role]?.variant}>{roleConfig[s.role]?.label}</Badge>
                           </div>
                         </td>
-                        <td className="px-4 py-3">
+                        <td className="hidden sm:table-cell px-4 py-3">
                           <div className="flex flex-wrap items-center gap-1.5 text-xs">
                             {s.role === 'TRAINER' || s.role === 'GYM_ADMIN' ? (
                               <>
@@ -245,23 +249,23 @@ export default function StaffPage() {
           ) : (
             <div className="p-5 sm:p-6 space-y-6">
               <div className="rounded-2xl bg-gradient-to-r from-dark to-gray-800 p-4 sm:p-5 text-white">
-                <div className="flex items-start justify-between gap-4">
-                  <div className="flex items-center gap-3">
-                    <div className="h-11 w-11 rounded-full bg-primary text-dark flex items-center justify-center text-sm font-bold">
+                <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3">
+                  <div className="flex items-center gap-3 min-w-0">
+                    <div className="h-11 w-11 rounded-full bg-primary text-dark flex items-center justify-center text-sm font-bold shrink-0">
                       {selectedStaffDetail.firstName[0]}{selectedStaffDetail.lastName[0]}
                     </div>
-                    <div>
-                      <h3 className="text-xl font-bold">
+                    <div className="min-w-0">
+                      <h3 className="text-lg font-bold leading-tight truncate">
                         {selectedStaffDetail.firstName} {selectedStaffDetail.lastName}
                       </h3>
-                      <p className="text-sm text-gray-300">{selectedStaffDetail.email}</p>
+                      <p className="text-sm text-gray-300 truncate">{selectedStaffDetail.email}</p>
                     </div>
                   </div>
-                  <div className="text-right">
+                  <div className="flex sm:flex-col sm:text-right items-center sm:items-end gap-2 sm:gap-1 shrink-0">
                     <Badge variant={roleConfig[selectedStaffDetail.role]?.variant}>
                       {roleConfig[selectedStaffDetail.role]?.label || selectedStaffDetail.role}
                     </Badge>
-                    <p className="mt-2 text-xs text-gray-300">
+                    <p className="text-xs text-gray-300">
                       Miembro desde {new Date(selectedStaffDetail.createdAt).toLocaleDateString('es-CR')}
                     </p>
                   </div>
