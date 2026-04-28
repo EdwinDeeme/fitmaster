@@ -1,11 +1,18 @@
 import { api } from '@/lib/api';
 
+export interface CombinedPrices {
+  monthly?: number;
+  quarterly?: number;
+  annual?: number;
+}
+
 export interface MembershipPlan {
   id: string;
   name: string;
   description?: string;
-  type: 'MONTHLY' | 'QUARTERLY' | 'ANNUAL';
+  type: 'MONTHLY' | 'QUARTERLY' | 'ANNUAL' | 'COMBINED';
   price: number;
+  prices?: CombinedPrices;
   isActive: boolean;
   activeUsers?: number;
 }

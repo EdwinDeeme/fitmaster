@@ -13,8 +13,8 @@ import { UserRole } from '@/types/auth';
 import { Plus, Search, CreditCard, Users, Trash2 } from 'lucide-react';
 import { MembershipPlanForm } from '@/components/memberships/membership-plan-form';
 
-const typeLabels: Record<string, string> = { MONTHLY: 'Mensual', QUARTERLY: 'Trimestral', ANNUAL: 'Anual' };
-const typeVariant: Record<string, any>   = { MONTHLY: 'secondary', QUARTERLY: 'warning', ANNUAL: 'success' };
+const typeLabels: Record<string, string> = { MONTHLY: 'Mensual', QUARTERLY: 'Trimestral', ANNUAL: 'Anual', COMBINED: 'Combinado' };
+const typeVariant: Record<string, any>   = { MONTHLY: 'secondary', QUARTERLY: 'warning', ANNUAL: 'success', COMBINED: 'default' };
 
 export default function MembershipsPage() {
   const qc = useQueryClient();
@@ -163,10 +163,20 @@ export default function MembershipsPage() {
                     <div className="bg-gradient-to-r from-primary/5 to-primary/10 rounded-xl p-4 border border-primary/20">
                       <div className="flex items-center justify-between gap-4">
                         <div>
-                          <p className="text-xs text-gray-600 uppercase tracking-wide font-semibold mb-1">Precio ({typeLabels[plan.type]})</p>
-                          <p className="text-3xl font-bold text-green-700">
-                            ₡{Number(plan.price).toLocaleString('es-CR')}
+                          <p className="text-xs text-gray-600 uppercase tracking-wide font-semibold mb-1">
+                            {plan.type === 'COMBINED' ? 'Precios' : `Precio (${typeLabels[plan.type]})`}
                           </p>
+                          {plan.type !== 'COMBINED' ? (
+                            <p className="text-3xl font-bold text-green-700">
+                              ₡{Number(plan.price).toLocaleString('es-CR')}
+                            </p>
+                          ) : (
+                            <div className="space-y-0.5">
+                              {plan.prices?.monthly   && <p className="text-sm font-semibold text-green-700">Mensual: ₡{Number(plan.prices.monthly).toLocaleString('es-CR')}</p>}
+                              {plan.prices?.quarterly && <p className="text-sm font-semibold text-green-700">Trimestral: ₡{Number(plan.prices.quarterly).toLocaleString('es-CR')}</p>}
+                              {plan.prices?.annual    && <p className="text-sm font-semibold text-green-700">Anual: ₡{Number(plan.prices.annual).toLocaleString('es-CR')}</p>}
+                            </div>
+                          )}
                         </div>
                         <div className="flex items-center gap-2 bg-white/70 rounded-lg px-3 py-2 border border-green-200">
                           <div className="flex items-center justify-center w-7 h-7 rounded-md bg-green-100">

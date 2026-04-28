@@ -65,11 +65,26 @@ export function RoutineFormModal({ routine, onClose, onSuccess }: RoutineFormMod
             });
           }
         }
+      } else if (clientChanged) {
+        // Edit mode: client changed — unassign previous if any
+        if (assignmentId) {
+          await routinesService.unassign(assignmentId);
+        }
+        // Assign new client if one was selected
+        if (clientId) {
+          await routinesService.assign(result.id, {
+            clientId,
+            startDate: new Date().toISOString().split('T')[0],
+          });
+        }
       }
+
       return result;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['routines'] });
+      queryClient.invalidateQueries({ queryKey: ['routines-recent'] });
+      queryClient.invalidateQueries({ queryKey: ['recent-activity'] });
       onSuccess();
     },
   });

@@ -12,7 +12,7 @@ import { Select } from '@/components/ui/select';
 import { clientsService } from '@/services/clients.service';
 import { membershipsService } from '@/services/memberships.service';
 import { membershipPlansService, MembershipPlan } from '@/services/membership-plans.service';
-import { PlanSelector } from '@/components/memberships/plan-selector';
+import { PlanSelector, SelectedPlan } from '@/components/memberships/plan-selector';
 import { Client } from '@/types/gym';
 import { User, CreditCard, CheckCircle2 } from 'lucide-react';
 import { api } from '@/lib/api';
@@ -24,11 +24,6 @@ interface Props {
 }
 
 type Step = 'client' | 'membership';
-
-const membershipLabels: Record<string, string> = { MONTHLY: 'Mensual', QUARTERLY: 'Trimestral', ANNUAL: 'Anual' };
-
-
-const TYPE_ORDER: Record<string, number> = { MONTHLY: 1, QUARTERLY: 2, ANNUAL: 3 };
 
 function computeEndDate(startDate: string, type: string) {
   const d = new Date(startDate);
@@ -45,7 +40,7 @@ export function ClientForm({ client, onSuccess, onCancel }: Props) {
   );
 
   const [step, setStep]                 = useState<Step>('client');
-  const [selectedPlan, setSelectedPlan] = useState<MembershipPlan | null>(null);
+  const [selectedPlan, setSelectedPlan] = useState<SelectedPlan | null>(null);
   const [planError, setPlanError]       = useState(false);
   const [upgradeError, setUpgradeError] = useState('');
   const [paymentMethod, setPaymentMethod] = useState('CASH');
@@ -102,15 +97,21 @@ export function ClientForm({ client, onSuccess, onCancel }: Props) {
         await membershipsService.updateStatus(activeMembership.id, 'CANCELLED');
       }
       await api.post('/memberships', {
-        clientId:  client.id,
-        type:      selectedPlan.type,
-        startDate: new Date(startDate).toISOString(),
-        endDate:   new Date(endDate).toISOString(),
-        price:     Number(selectedPlan.price),
-        autoRenew: false,
+        clientId:         client.id,
+        membershipPlanId: selectedPlan.id,
+        type:             selectedPlan.selectedType,
+        startDate:        new Date(startDate).toISOString(),
+        endDate:          new Date(endDate).toISOString(),
+        price:            selectedPlan.selectedPrice,
+        autoRenew:        false,
       });
     },
-    onSuccess,
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['membership-plans'] });
+      qc.invalidateQueries({ queryKey: ['gym-metrics'] });
+      qc.invalidateQueries({ queryKey: ['recent-activity'] });
+      onSuccess();
+    },
   });
 
   const handleClientSubmit = (data: any) => {
@@ -125,7 +126,7 @@ export function ClientForm({ client, onSuccess, onCancel }: Props) {
     });
   };
 
-  const handlePlanSelect = (plan: MembershipPlan) => {
+  const handlePlanSelect = (plan: SelectedPlan) => {
     setUpgradeError('');
     if (activeMembership) {
       if (Number(plan.price) <= Number(activeMembership.price)) {
@@ -137,6 +138,8 @@ export function ClientForm({ client, onSuccess, onCancel }: Props) {
     setSelectedPlan(plan);
     setPlanError(false);
   };
+
+  const [paymentMethod, setPaymentMethod] = useState('CASH');
 
   const handleUpgradeSubmit = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -277,7 +280,9 @@ export function ClientForm({ client, onSuccess, onCancel }: Props) {
             <div className="p-3 bg-bone rounded-xl text-sm space-y-1">
               <p className="text-xs text-gray-500 font-medium uppercase tracking-wide">Membresía actual</p>
               <div className="flex justify-between">
-                <span className="text-dark font-medium">{membershipLabels[activeMembership.type] ?? activeMembership.type}</span>
+                <span className="text-dark font-medium">
+                  {{ MONTHLY: 'Mensual', QUARTERLY: 'Trimestral', ANNUAL: 'Anual', COMBINED: 'Combinado' }[activeMembership.type] ?? activeMembership.type}
+                </span>
                 <span className="font-bold text-dark">₡{Number(activeMembership.price).toLocaleString('es-CR')}</span>
               </div>
               <p className="text-xs text-gray-400">
@@ -318,7 +323,7 @@ export function ClientForm({ client, onSuccess, onCancel }: Props) {
               <div className="space-y-1">
                 <Label>Monto a cobrar</Label>
                 <div className="h-12 px-4 flex items-center rounded-lg border border-gray-100 bg-bone text-sm font-semibold text-dark">
-                  ₡{Number(selectedPlan.price).toLocaleString('es-CR')}
+                  ₡{Number(selectedPlan.selectedPrice).toLocaleString('es-CR')}
                 </div>
               </div>
             </>
