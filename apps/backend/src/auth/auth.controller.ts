@@ -5,6 +5,7 @@ import {
   HttpCode,
   HttpStatus,
   UseGuards,
+  Patch,
 } from '@nestjs/common';
 import {
   ApiTags,
@@ -80,16 +81,18 @@ export class AuthController {
   @Post('logout')
   @HttpCode(HttpStatus.NO_CONTENT)
   @ApiBearerAuth()
-  @ApiOperation({ summary: 'Logout current user' })
-  @ApiResponse({
-    status: 204,
-    description: 'User successfully logged out',
-  })
-  @ApiResponse({
-    status: 401,
-    description: 'Unauthorized',
-  })
   async logout(@CurrentUser('userId') userId: string): Promise<void> {
     await this.authService.logout(userId);
+  }
+
+  @UseGuards(JwtAuthGuard)
+  @Patch('change-password')
+  @HttpCode(HttpStatus.NO_CONTENT)
+  @ApiBearerAuth()
+  async changePassword(
+    @CurrentUser('userId') userId: string,
+    @Body() body: { currentPassword: string; newPassword: string },
+  ): Promise<void> {
+    await this.authService.changePassword(userId, body.currentPassword, body.newPassword);
   }
 }

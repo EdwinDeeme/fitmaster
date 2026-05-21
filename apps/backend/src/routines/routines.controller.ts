@@ -53,7 +53,7 @@ export class RoutinesController {
   // ─── Exercise Logs (static paths before :id) ─────────────────────────────
 
   @Post('clients/:clientId/routines/:routineId/logs')
-  @Roles('GYM_ADMIN', 'TRAINER')
+  @Roles('GYM_ADMIN', 'TRAINER', 'CLIENT')
   @ApiOperation({ summary: 'Log exercise weight for a client' })
   logExercise(
     @CurrentUser() user: any,
@@ -65,7 +65,7 @@ export class RoutinesController {
   }
 
   @Get('clients/:clientId/routines/:routineId/logs')
-  @Roles('GYM_ADMIN', 'TRAINER', 'RECEPTIONIST')
+  @Roles('GYM_ADMIN', 'TRAINER', 'RECEPTIONIST', 'CLIENT')
   @ApiOperation({ summary: 'Get exercise logs grouped by exercise name' })
   getExerciseLogs(
     @CurrentUser() user: any,
@@ -76,7 +76,7 @@ export class RoutinesController {
   }
 
   @Get('clients/:clientId/logs')
-  @Roles('GYM_ADMIN', 'TRAINER', 'RECEPTIONIST')
+  @Roles('GYM_ADMIN', 'TRAINER', 'RECEPTIONIST', 'CLIENT')
   @ApiOperation({ summary: 'Get all exercise logs for a client' })
   getExerciseLogsByClient(
     @CurrentUser() user: any,

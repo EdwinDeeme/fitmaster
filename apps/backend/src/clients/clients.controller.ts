@@ -13,6 +13,12 @@ import { RolesGuard } from '../auth/guards/roles.guard';
 export class ClientsController {
   constructor(private readonly clientsService: ClientsService) {}
 
+  @Get('me')
+  @Roles(UserRole.CLIENT)
+  getMe(@CurrentUser() user: TokenPayload) {
+    return this.clientsService.findByEmail(user.email, user.gymId!);
+  }
+
   @Post()
   @Roles(UserRole.GYM_ADMIN, UserRole.RECEPTIONIST)
   create(@CurrentUser() user: TokenPayload, @Body() dto: CreateClientDto) {
@@ -50,7 +56,7 @@ export class ClientsController {
   }
 
   @Post(':id/progress')
-  @Roles(UserRole.GYM_ADMIN, UserRole.TRAINER)
+  @Roles(UserRole.GYM_ADMIN, UserRole.TRAINER, UserRole.CLIENT)
   addProgress(@CurrentUser() user: TokenPayload, @Param('id') id: string, @Body() dto: CreateProgressDto) {
     return this.clientsService.addProgress(user.gymId!, id, dto);
   }

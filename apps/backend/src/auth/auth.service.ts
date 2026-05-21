@@ -154,7 +154,7 @@ export class AuthService {
   private async generateAuthResult(user: User): Promise<AuthResult> {
     const payload: TokenPayload = {
       userId: user.id,
-      gymId: user.gymId || null, // Puede ser null para SUPER_ADMIN
+      gymId: user.gymId || null,
       role: user.role,
       email: user.email,
     };
@@ -172,17 +172,34 @@ export class AuthService {
 
     const userProfile: UserProfile = {
       id: user.id,
-      gymId: user.gymId || null, // Puede ser null para SUPER_ADMIN
+      gymId: user.gymId || null,
       email: user.email,
       role: user.role,
       firstName: user.firstName,
       lastName: user.lastName,
+      mustChangePassword: user.mustChangePassword,
     };
 
-    return {
-      accessToken,
-      refreshToken,
-      user: userProfile,
-    };
+    return { accessToken, refreshToken, user: userProfile };
+  }
+
+  async changePassword(userId: string, currentPassword: string, newPassword: string): Promise<void> {
+    const user = await this.prisma.user.findUnique({ where: { id: userId } });
+    if (!user) throw new UnauthorizedException('Usuario no encontrado');
+
+    const valid = await bcrypt.compare(currentPassword, user.passwordHash);
+    if (!valid) throw new UnauthorizedException('Contraseña actual incorrecta');
+
+    const passwordHash = await bcrypt.hash(newPassword, this.SALT_ROUNDS);
+    await this.prisma.user.update({
+      where: { id: userId },
+      data: { passwordHash, mustChangePassword: false },
+    });
+
+    // Clear tempPassword on the linked Client record
+    await this.prisma.client.updateMany({
+      where: { email: user.email },
+      data: { tempPassword: null, mustChangePassword: false },
+    });
   }
 }

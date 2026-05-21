@@ -381,6 +381,17 @@ export function ClientDetail({ clientId, onTrackingChange }: {
               ))}
             </div>
           </div>
+          {/* Temp password */}
+          {(client as any).tempPassword && (
+            <div className="flex items-center justify-between bg-yellow-50 border border-yellow-200 rounded-xl px-3 py-2.5">
+              <div>
+                <p className="text-[10px] font-semibold text-yellow-700 uppercase tracking-wide">Contraseña temporal</p>
+                <p className="font-mono font-bold text-dark text-sm mt-0.5">{(client as any).tempPassword}</p>
+              </div>
+              <span className="text-[10px] text-yellow-600 bg-yellow-100 px-2 py-1 rounded-lg">Pendiente cambio</span>
+            </div>
+          )}
+
           <div>
             <div className="flex items-center gap-1.5 mb-2">
               <CreditCard className="h-3.5 w-3.5 text-primary" />

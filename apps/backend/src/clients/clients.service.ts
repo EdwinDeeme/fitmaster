@@ -1,6 +1,16 @@
 import { Injectable, NotFoundException, ConflictException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateClientDto, UpdateClientDto, CreateClientFullDto, CreateProgressDto, UpdateGoalDto } from './dto';
+import * as bcrypt from 'bcrypt';
+import * as crypto from 'crypto';
+
+function generateTempPassword(): string {
+  // e.g. Fit#4829
+  const num = crypto.randomInt(1000, 9999);
+  const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ';
+  const letter = chars[crypto.randomInt(0, chars.length)];
+  return `Fit${letter}${num}`;
+}
 
 @Injectable()
 export class ClientsService {
@@ -16,9 +26,32 @@ export class ClientsService {
     const height = dto.height / 100;
     const bmi = parseFloat((weight / (height * height)).toFixed(2));
 
+    const tempPassword = generateTempPassword();
+    const passwordHash = await bcrypt.hash(tempPassword, 12);
+
+    // Create or update User account with new temp password
+    const existingUser = await this.prisma.user.upsert({
+      where: { email: dto.email },
+      create: {
+        gymId,
+        email: dto.email,
+        passwordHash,
+        role: 'CLIENT',
+        firstName: dto.firstName,
+        lastName: dto.lastName,
+        mustChangePassword: true,
+      },
+      update: {
+        passwordHash,
+        mustChangePassword: true,
+      },
+    });
+    const clientUserId = existingUser.id;
+
     return this.prisma.client.create({
       data: {
         gymId,
+        userId: clientUserId,
         firstName: dto.firstName,
         lastName: dto.lastName,
         email: dto.email,
@@ -32,6 +65,8 @@ export class ClientsService {
         goalType: dto.goalType,
         targetWeight: dto.targetWeight,
         targetDate: dto.targetDate ? new Date(dto.targetDate) : undefined,
+        tempPassword,
+        mustChangePassword: true,
       },
     });
   }
@@ -50,6 +85,25 @@ export class ClientsService {
       },
       orderBy: { createdAt: 'desc' },
     });
+  }
+
+  async findByEmail(email: string, gymId: string) {
+    const client = await this.prisma.client.findFirst({
+      where: { email, gymId },
+      include: {
+        memberships: {
+          orderBy: { createdAt: 'desc' },
+          include: { payments: { orderBy: { createdAt: 'desc' }, take: 1 } },
+        },
+        physicalProgress: { orderBy: { date: 'desc' }, take: 10 },
+        routineAssignments: {
+          where: { isActive: true },
+          include: { routine: true },
+        },
+      },
+    });
+    if (!client) throw new NotFoundException('Cliente no encontrado');
+    return client;
   }
 
   async findOne(gymId: string, id: string) {
@@ -84,8 +138,13 @@ export class ClientsService {
   }
 
   async remove(gymId: string, id: string) {
-    await this.findOne(gymId, id);
-    return this.prisma.client.delete({ where: { id } });
+    const client = await this.findOne(gymId, id);
+    await this.prisma.client.delete({ where: { id } });
+    // Also remove the linked User account if it exists
+    if (client.email) {
+      await this.prisma.user.deleteMany({ where: { email: client.email, role: 'CLIENT' } });
+    }
+    return client;
   }
 
   // ─── Physical Progress ────────────────────────────────────────────────────
@@ -146,10 +205,33 @@ export class ClientsService {
     const bmi = parseFloat((dto.weight / (h * h)).toFixed(2));
 
     return this.prisma.$transaction(async (tx) => {
+      const tempPassword = generateTempPassword();
+      const passwordHash = await bcrypt.hash(tempPassword, 12);
+
+      // Create or update User account with new temp password
+      const user = await tx.user.upsert({
+        where: { email: dto.email },
+        create: {
+          gymId,
+          email: dto.email,
+          passwordHash,
+          role: 'CLIENT',
+          firstName: dto.firstName,
+          lastName: dto.lastName,
+          mustChangePassword: true,
+        },
+        update: {
+          passwordHash,
+          mustChangePassword: true,
+        },
+      });
+      const clientUserId = user.id;
+
       // 1. Create client
       const client = await tx.client.create({
         data: {
           gymId,
+          userId: clientUserId,
           firstName: dto.firstName,
           lastName: dto.lastName,
           email: dto.email,
@@ -163,6 +245,8 @@ export class ClientsService {
           goalType: dto.goalType,
           targetWeight: dto.targetWeight,
           targetDate: dto.targetDate ? new Date(dto.targetDate) : undefined,
+          tempPassword,
+          mustChangePassword: true,
         },
       });
 

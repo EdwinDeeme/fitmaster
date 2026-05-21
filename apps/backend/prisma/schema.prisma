@@ -59,6 +59,7 @@ model User {
   role         UserRole
   firstName    String   @map("first_name")
   lastName     String   @map("last_name")
+  mustChangePassword Boolean @default(false) @map("must_change_password")
   createdAt    DateTime @default(now()) @map("created_at")
   updatedAt    DateTime @updatedAt @map("updated_at")
 
@@ -88,6 +89,7 @@ model Client {
   id                 String       @id @default(uuid())
   gymId              String       @map("gym_id")
   createdByUserId    String?      @map("created_by_user_id")
+  userId             String?      @unique @map("user_id")
   firstName          String       @map("first_name")
   lastName           String       @map("last_name")
   email              String
@@ -103,6 +105,8 @@ model Client {
   targetWeight       Float?       @map("target_weight")
   targetDate         DateTime?    @map("target_date")
   status             ClientStatus @default(ACTIVE)
+  tempPassword       String?      @map("temp_password")
+  mustChangePassword Boolean      @default(true) @map("must_change_password")
   createdAt          DateTime     @default(now()) @map("created_at")
   updatedAt          DateTime     @updatedAt @map("updated_at")
 
